@@ -19,14 +19,14 @@ app.get("/health", (req, res) => {
     });
 });
 
-// Obtener todos los equipos con búsqueda
+// Obtener todos los equipos con búsqueda - VERSIÓN CORREGIDA
 app.get("/api/equipos", async (req, res) => {
     try {
         const { q } = req.query;
         
         let query = `
             SELECT e.*, 
-                json_group_array(json_object('clave', esp.clave, 'valor', esp.valor)) AS especificaciones
+                jsonb_agg(json_build_object('clave', esp.clave, 'valor', esp.valor)) AS especificaciones
             FROM equipos e
             LEFT JOIN especificaciones esp ON e.id = esp.equipo_id
         `;
@@ -34,9 +34,9 @@ app.get("/api/equipos", async (req, res) => {
 
         if (q && q.trim() !== '') {
             query += `
-                WHERE e.ine LIKE ? OR e.nne LIKE ? OR e.serie LIKE ? OR e.tipo LIKE ? 
-                    OR e.estado LIKE ? OR e.responsable LIKE ? OR e.ubicacion LIKE ?
-                    OR esp.clave LIKE ? OR esp.valor LIKE ?
+                WHERE e.ine LIKE $1 OR e.nne LIKE $2 OR e.serie LIKE $3 OR e.tipo LIKE $4 
+                    OR e.estado LIKE $5 OR e.responsable LIKE $6 OR e.ubicacion LIKE $7
+                    OR esp.clave LIKE $8 OR esp.valor LIKE $9
             `;
             const likeQ = `%${q}%`;
             params.push(...Array(9).fill(likeQ));
@@ -46,10 +46,10 @@ app.get("/api/equipos", async (req, res) => {
 
         const rows = await db.all(query, params);
         
-        // Parsear especificaciones JSON
+        // CORREGIDO: PostgreSQL ya devuelve objetos, no necesita JSON.parse
         const equipos = rows.map((row) => ({
             ...row,
-            especificaciones: row.especificaciones ? JSON.parse(row.especificaciones) : []
+            especificaciones: row.especificaciones || []  // ← Solo esto cambió
         }));
         
         res.json(equipos);
