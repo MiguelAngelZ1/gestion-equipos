@@ -1,0 +1,24 @@
+{
+  "name": "gestion-equipos",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de equipos con exportación a PDF",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "migrate": "node backend/db/migrate.js",
+    "test": "echo \"No hay tests configurados\" && exit 0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "cors": "^2.8.5",
+    "pg": "^8.11.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["equipos", "gestion", "inventario", "pdf"],
+  "author": "Tu Nombre",
+  "license": "MIT"
+}

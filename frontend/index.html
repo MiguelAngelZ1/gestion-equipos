@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de Gestión de Equipos</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="custom-header text-center">
+      <h1 class="mb-0">Sistema de Gestión de Equipos</h1>
+    </header>
+
+    <main class="p-4">
+      <!-- Contenedor de notificaciones -->
+      <div class="notification-container" id="notificationContainer"></div>
+      
+      <section class="form-section">
+        <h2 class="mb-4">Registro de Equipo</h2>
+        <form id="equipoForm">
+          <input type="hidden" id="editId" />
+          
+          <!-- Indicador de estado del formulario -->
+          <div class="form-status" id="formStatus">
+            <span class="form-status-icon" id="formStatusIcon"></span>
+            <span id="formStatusText"></span>
+          </div>
+          
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label for="ine" class="form-label">INE (Nombre del equipo):</label>
+              <input type="text" class="form-control" id="ine" required>
+            </div>
+            
+            <div class="col-md-6">
+              <label for="nne" class="form-label">NNE (Número único):</label>
+              <input type="text" class="form-control" id="nne" required>
+            </div>
+            
+            <div class="col-md-6">
+              <label for="serie" class="form-label">Número de Serie:</label>
+              <input type="text" class="form-control" id="serie" required>
+            </div>
+            
+            <div class="col-md-6">
+              <label for="tipo" class="form-label">Tipo de Equipo:</label>
+              <select class="form-select" id="tipo" required>
+                <option value="">-- Seleccionar --</option>
+                <option value="ARMAMENTO">ARMAMENTO</option>
+                <option value="AUTOMOTORES">AUTOMOTORES</option>
+                <option value="AVIACIÓN">AVIACIÓN</option>
+                <option value="ELECTRÓNICA Y ELECTRICIDAD">ELECTRÓNICA Y ELECTRICIDAD</option>
+                <option value="EQUIPOS DE TALLER, MÁQUINAS Y HERRAMIENTAS">EQUIPOS DE TALLER, MÁQUINAS Y HERRAMIENTAS</option>
+                <option value="INGENIEROS">INGENIEROS</option>
+                <option value="MAT GENERALES">MAT GENERALES</option>
+                <option value="MUNICIÓN">MUNICIÓN</option>
+                <option value="OP, INSTRUMENTAL Y EQU DE LABORATORIO">OP, INSTRUMENTAL Y EQU DE LABORATORIO</option>
+                <option value="REP. DE ARS">REP. DE ARS</option>
+              </select>
+            </div>
+            
+            <div class="col-md-6">
+              <label for="estado" class="form-label">Estado:</label>
+              <select class="form-select" id="estado" required>
+                <option value="">-- Seleccionar --</option>
+                <option value="BAJA">BAJA</option>
+                <option value="E/S En Servicio">E/S En Servicio</option>
+                <option value="EXT Extraviado">EXT Extraviado</option>
+                <option value="F/S Fuera de Servicio">F/S Fuera de Servicio</option>
+                <option value="MANT Mantenimiento">MANT Mantenimiento</option>
+                <option value="REPAR Reparación">REPAR Reparación</option>
+              </select>
+            </div>
+            
+            <div class="col-md-6">
+              <label for="responsable" class="form-label">Responsable:</label>
+              <input type="text" class="form-control" id="responsable" required>
+            </div>
+            
+            <div class="col-md-12">
+              <label for="ubicacion" class="form-label">Ubicación Física:</label>
+              <input type="text" class="form-control" id="ubicacion" required>
+            </div>
+          </div>
+
+          <div class="specifications-section mb-4 p-3 bg-light rounded">
+            <h3 class="h5 mb-3">Especificaciones Adicionales</h3>
+            <div id="especificaciones"></div>
+            <button type="button" class="btn btn-outline-secondary mt-2" onclick="addEspecificacionField()">
+              <i class="bi bi-plus-circle"></i> Agregar Especificación
+            </button>
+          </div>
+          
+          <div class="form-actions d-flex gap-2">
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+              <i class="bi bi-save"></i> Guardar Equipo
+            </button>
+            <button type="button" id="cancelEdit" class="btn btn-secondary" style="display:none;">
+              <i class="bi bi-x-circle"></i> Cancelar Edición
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="data-section bg-white p-4 rounded shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+          <div class="input-group flex-grow-1" style="max-width: 400px;">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" id="searchInput" class="form-control" placeholder="Buscar por cualquier campo...">
+          </div>
+          
+          <div class="d-flex gap-2">
+            <button id="exportPdfBtn" class="btn btn-danger">
+              <i class="bi bi-file-pdf"></i> Exportar a PDF
+            </button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <div class="table-responsive">
+            <table id="equiposTable" class="table table-striped table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th>INE</th>
+                  <th>NNE</th>
+                  <th>Nro Serie</th>
+                  <th>Tipo</th>
+                  <th>Estado</th>
+                  <th>Responsable</th>
+                  <th>Ubicación</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tablaBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <!-- Bootstrap JS Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

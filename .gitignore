@@ -1,0 +1,7 @@
+# .gitignore - En la RAIZ
+node_modules/
+npm-debug.log*
+equipos.db
+.env
+.DS_Store
+*.log
