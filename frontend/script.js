@@ -47,7 +47,7 @@ async function apiRequest(endpoint, options = {}) {
 async function cargarEquipos() {
   try {
     showFormStatus("Cargando equipos...", "info", true);
-    const query = searchInput.value.trim();
+    const query = searchInput.value.trim().toLowerCase();
     const endpoint = query
       ? `/equipos?q=${encodeURIComponent(query)}`
       : "/equipos";
@@ -240,13 +240,13 @@ function renderEquipos() {
 
   const filtered = equipos.filter(
     (eq) =>
-      eq.ine.toLowerCase().includes(query) ||
-      eq.nne.toLowerCase().includes(query) ||
-      eq.serie.toLowerCase().includes(query) ||
-      eq.tipo.toLowerCase().includes(query) ||
-      eq.estado.toLowerCase().includes(query) ||
-      eq.responsable.toLowerCase().includes(query) ||
-      eq.ubicacion.toLowerCase().includes(query)
+      (eq.ine || "").toLowerCase().includes(query) ||
+      (eq.nne || "").toLowerCase().includes(query) ||
+      (eq.serie || "").toLowerCase().includes(query) ||
+      (eq.tipo || "").toLowerCase().includes(query) ||
+      (eq.estado || "").toLowerCase().includes(query) ||
+      (eq.responsable || "").toLowerCase().includes(query) ||
+      (eq.ubicacion || "").toLowerCase().includes(query)
   );
 
   if (filtered.length === 0) {
