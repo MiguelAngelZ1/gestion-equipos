@@ -233,7 +233,7 @@ function cancelarEdicion() {
   hideFormStatus();
 }
 
-// ===== RENDERIZADO DE EQUIPOS =====
+// ===== RENDERIZADO DE EQUIPOS MEJORADO =====
 function renderEquipos() {
   const query = searchInput.value.toLowerCase();
   tablaBody.innerHTML = "";
@@ -274,13 +274,17 @@ function renderEquipos() {
 
     const row = document.createElement("tr");
     row.innerHTML = `
-            <td>${eq.ine || "-"}</td>
-            <td class="nne-column">${eq.nne || "-"}</td>
-            <td class="serie-column">${eq.serie || "-"}</td>
-            <td>${eq.tipo || "-"}</td>
-            <td class="${estadoClass}">${estadoText}</td>
-            <td>${eq.responsable || "-"}</td>
-            <td>${eq.ubicacion || "-"}</td>
+            <td title="${eq.ine || "-"}">${eq.ine || "-"}</td>
+            <td class="nne-column" title="${eq.nne || "-"}">${
+      eq.nne || "-"
+    }</td>
+            <td class="serie-column" title="${eq.serie || "-"}">${
+      eq.serie || "-"
+    }</td>
+            <td title="${eq.tipo || "-"}">${eq.tipo || "-"}</td>
+            <td class="${estadoClass}" title="${estadoText}">${estadoText}</td>
+            <td title="${eq.responsable || "-"}">${eq.responsable || "-"}</td>
+            <td title="${eq.ubicacion || "-"}">${eq.ubicacion || "-"}</td>
             <td class="text-center">
                 <div class="d-flex justify-content-center">
                     <button onclick='verDetallesEquipo(${JSON.stringify(
