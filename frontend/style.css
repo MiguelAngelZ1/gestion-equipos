@@ -60,7 +60,7 @@ body {
   transform: scale(1.05);
 }
 
-/* ===== MEJORAS EN LA TABLA - SIN SALTOS DE LÍNEA ===== */
+/* ===== TABLA DINÁMICA ADAPTATIVA - SIN CARDS ===== */
 .table-container {
   overflow-x: auto;
   border-radius: 8px;
@@ -71,25 +71,74 @@ body {
 
 #equiposTable {
   width: 100%;
-  table-layout: auto;
-  white-space: nowrap;
+  table-layout: fixed;
   margin-bottom: 0;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 #equiposTable th,
 #equiposTable td {
+  padding: 12px 8px;
+  vertical-align: middle;
+  border-color: #e9ecef;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 12px 10px;
-  vertical-align: middle;
-  border-color: #e9ecef;
+}
+
+/* Distribución inteligente de columnas */
+#equiposTable th:nth-child(1), /* INE */
+#equiposTable td:nth-child(1) {
+  width: 22%;
+  min-width: 180px;
+}
+
+#equiposTable th:nth-child(2), /* NNE */
+#equiposTable td:nth-child(2) {
+  width: 10%;
+  min-width: 90px;
+}
+
+#equiposTable th:nth-child(3), /* Serie */
+#equiposTable td:nth-child(3) {
+  width: 12%;
+  min-width: 110px;
+}
+
+#equiposTable th:nth-child(4), /* Tipo */
+#equiposTable td:nth-child(4) {
+  width: 18%;
+  min-width: 150px;
+}
+
+#equiposTable th:nth-child(5), /* Estado */
+#equiposTable td:nth-child(5) {
+  width: 10%;
+  min-width: 100px;
+}
+
+#equiposTable th:nth-child(6), /* Responsable */
+#equiposTable td:nth-child(6) {
+  width: 12%;
+  min-width: 110px;
+}
+
+#equiposTable th:nth-child(7), /* Ubicación */
+#equiposTable td:nth-child(7) {
+  width: 10%;
+  min-width: 90px;
+}
+
+#equiposTable th:nth-child(8), /* Acciones */
+#equiposTable td:nth-child(8) {
+  width: 6%;
+  min-width: 120px;
 }
 
 /* Tooltip para texto largo */
 #equiposTable td {
   position: relative;
-  cursor: help;
 }
 
 #equiposTable td:hover::after {
@@ -104,57 +153,9 @@ body {
   font-size: 0.875rem;
   z-index: 1000;
   white-space: normal;
-  width: 200px;
+  width: 250px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Columnas específicas con anchos optimizados */
-#equiposTable th:nth-child(1), /* INE */
-#equiposTable td:nth-child(1) {
-  min-width: 180px;
-  max-width: 220px;
-}
-
-#equiposTable th:nth-child(2), /* NNE */
-#equiposTable td:nth-child(2) {
-  min-width: 100px;
-  max-width: 120px;
-}
-
-#equiposTable th:nth-child(3), /* Serie */
-#equiposTable td:nth-child(3) {
-  min-width: 120px;
-  max-width: 150px;
-}
-
-#equiposTable th:nth-child(4), /* Tipo */
-#equiposTable td:nth-child(4) {
-  min-width: 140px;
-  max-width: 180px;
-}
-
-#equiposTable th:nth-child(5), /* Estado */
-#equiposTable td:nth-child(5) {
-  min-width: 100px;
-  max-width: 120px;
-}
-
-#equiposTable th:nth-child(6), /* Responsable */
-#equiposTable td:nth-child(6) {
-  min-width: 120px;
-  max-width: 150px;
-}
-
-#equiposTable th:nth-child(7), /* Ubicación */
-#equiposTable td:nth-child(7) {
-  min-width: 100px;
-  max-width: 120px;
-}
-
-#equiposTable th:nth-child(8), /* Acciones */
-#equiposTable td:nth-child(8) {
-  min-width: 140px;
-  max-width: 140px;
+  pointer-events: none;
 }
 
 .table thead th {
@@ -165,7 +166,9 @@ body {
   letter-spacing: 0.5px;
   font-size: 0.85rem;
   border: none;
-  padding: 15px 10px;
+  padding: 15px 8px;
+  position: sticky;
+  top: 0;
 }
 
 .table tbody tr:nth-child(even) {
@@ -610,85 +613,6 @@ body {
   align-items: center;
 }
 
-/* Ajustes para pantallas pequeñas */
-@media (max-width: 768px) {
-  body {
-    padding: 10px;
-  }
-  
-  .container {
-    border-radius: 0;
-  }
-  
-  .table-container {
-    margin: 0 -0.5rem;
-    padding: 0 0.5rem;
-    font-size: 0.85rem;
-  }
-  
-  #equiposTable th,
-  #equiposTable td {
-    padding: 10px 8px;
-    font-size: 0.85rem;
-  }
-  
-  #equiposTable th:nth-child(1),
-  #equiposTable td:nth-child(1) {
-    min-width: 140px;
-    max-width: 160px;
-  }
-  
-  #equiposTable th:nth-child(2),
-  #equiposTable td:nth-child(2) {
-    min-width: 80px;
-    max-width: 100px;
-  }
-  
-  #equiposTable th:nth-child(3),
-  #equiposTable td:nth-child(3) {
-    min-width: 100px;
-    max-width: 120px;
-  }
-  
-  .notification-container {
-    top: 10px;
-    right: 10px;
-    left: 10px;
-    max-width: none;
-  }
-  
-  .modal-content {
-    max-height: 95vh;
-    margin: 10px;
-  }
-  
-  .modal-body {
-    max-height: calc(95vh - 150px);
-  }
-  
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .especificaciones-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .btn-action {
-    display: block;
-    width: 100%;
-    margin-bottom: 5px;
-  }
-  
-  .modal-footer {
-    flex-direction: column;
-  }
-  
-  .modal-footer .btn {
-    width: 100%;
-  }
-}
-
 /* ===== ESTILOS PARA MODO OFFLINE ===== */
 .online-status {
     position: fixed;
@@ -745,12 +669,266 @@ body {
     }
 }
 
-/* Ajustes responsive para el estado online */
+/* ===== RESPONSIVE PARA TABLA DINÁMICA ===== */
+
+/* Pantallas medianas (tablets) */
+@media (max-width: 1024px) {
+  .table-container {
+    margin: 0 -0.5rem;
+    padding: 0 0.5rem;
+  }
+  
+  #equiposTable th,
+  #equiposTable td {
+    padding: 10px 6px;
+    font-size: 0.85rem;
+  }
+  
+  /* Ajustar anchos de columnas para tablets */
+  #equiposTable th:nth-child(1),
+  #equiposTable td:nth-child(1) {
+    width: 20%;
+    min-width: 160px;
+  }
+  
+  #equiposTable th:nth-child(2),
+  #equiposTable td:nth-child(2) {
+    width: 8%;
+    min-width: 80px;
+  }
+  
+  #equiposTable th:nth-child(3),
+  #equiposTable td:nth-child(3) {
+    width: 10%;
+    min-width: 100px;
+  }
+  
+  #equiposTable th:nth-child(4),
+  #equiposTable td:nth-child(4) {
+    width: 16%;
+    min-width: 140px;
+  }
+  
+  #equiposTable th:nth-child(5),
+  #equiposTable td:nth-child(5) {
+    width: 9%;
+    min-width: 90px;
+  }
+  
+  #equiposTable th:nth-child(6),
+  #equiposTable td:nth-child(6) {
+    width: 11%;
+    min-width: 100px;
+  }
+  
+  #equiposTable th:nth-child(7),
+  #equiposTable td:nth-child(7) {
+    width: 9%;
+    min-width: 80px;
+  }
+  
+  #equiposTable th:nth-child(8),
+  #equiposTable td:nth-child(8) {
+    width: 7%;
+    min-width: 110px;
+  }
+  
+  .btn-action {
+    padding: 5px 8px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Pantallas pequeñas (móviles grandes) */
 @media (max-width: 768px) {
-    .online-status {
-        top: 60px;
-        right: 10px;
-        left: 10px;
-        text-align: center;
-    }
+  body {
+    padding: 10px;
+  }
+  
+  .container {
+    border-radius: 0;
+  }
+  
+  .table-container {
+    margin: 0 -0.25rem;
+    padding: 0 0.25rem;
+    font-size: 0.8rem;
+  }
+  
+  #equiposTable th,
+  #equiposTable td {
+    padding: 8px 4px;
+    font-size: 0.8rem;
+  }
+  
+  /* Ajustes más compactos para móviles */
+  #equiposTable th:nth-child(1),
+  #equiposTable td:nth-child(1) {
+    width: 18%;
+    min-width: 140px;
+  }
+  
+  #equiposTable th:nth-child(2),
+  #equiposTable td:nth-child(2) {
+    width: 7%;
+    min-width: 70px;
+  }
+  
+  #equiposTable th:nth-child(3),
+  #equiposTable td:nth-child(3) {
+    width: 9%;
+    min-width: 90px;
+  }
+  
+  #equiposTable th:nth-child(4),
+  #equiposTable td:nth-child(4) {
+    width: 15%;
+    min-width: 120px;
+  }
+  
+  #equiposTable th:nth-child(5),
+  #equiposTable td:nth-child(5) {
+    width: 8%;
+    min-width: 80px;
+  }
+  
+  #equiposTable th:nth-child(6),
+  #equiposTable td:nth-child(6) {
+    width: 10%;
+    min-width: 90px;
+  }
+  
+  #equiposTable th:nth-child(7),
+  #equiposTable td:nth-child(7) {
+    width: 8%;
+    min-width: 70px;
+  }
+  
+  #equiposTable th:nth-child(8),
+  #equiposTable td:nth-child(8) {
+    width: 5%;
+    min-width: 100px;
+  }
+  
+  .btn-action {
+    padding: 4px 6px;
+    font-size: 0.8rem;
+    margin: 1px;
+  }
+  
+  .notification-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+}
+
+/* Pantallas muy pequeñas (móviles pequeños) */
+@media (max-width: 480px) {
+  #equiposTable th,
+  #equiposTable td {
+    padding: 6px 3px;
+    font-size: 0.75rem;
+  }
+  
+  /* Reducir aún más para móviles pequeños */
+  #equiposTable th:nth-child(1),
+  #equiposTable td:nth-child(1) {
+    width: 16%;
+    min-width: 120px;
+  }
+  
+  #equiposTable th:nth-child(2),
+  #equiposTable td:nth-child(2) {
+    width: 6%;
+    min-width: 60px;
+  }
+  
+  #equiposTable th:nth-child(3),
+  #equiposTable td:nth-child(3) {
+    width: 8%;
+    min-width: 80px;
+  }
+  
+  #equiposTable th:nth-child(4),
+  #equiposTable td:nth-child(4) {
+    width: 14%;
+    min-width: 110px;
+  }
+  
+  #equiposTable th:nth-child(5),
+  #equiposTable td:nth-child(5) {
+    width: 7%;
+    min-width: 70px;
+  }
+  
+  #equiposTable th:nth-child(6),
+  #equiposTable td:nth-child(6) {
+    width: 9%;
+    min-width: 80px;
+  }
+  
+  #equiposTable th:nth-child(7),
+  #equiposTable td:nth-child(7) {
+    width: 7%;
+    min-width: 60px;
+  }
+  
+  #equiposTable th:nth-child(8),
+  #equiposTable td:nth-child(8) {
+    width: 4%;
+    min-width: 90px;
+  }
+  
+  .btn-action {
+    padding: 3px 5px;
+    font-size: 0.75rem;
+  }
+  
+  /* Ocultar texto en botones, solo iconos */
+  .btn-action span {
+    display: none;
+  }
+  
+  .online-status {
+    top: 60px;
+    right: 10px;
+    left: 10px;
+    text-align: center;
+  }
+}
+
+/* Asegurar que la tabla siempre mantenga su estructura */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mantener la tabla como tabla en todos los dispositivos */
+@media (max-width: 768px) {
+  .table-responsive {
+    border: 0;
+  }
+  
+  #equiposTable {
+    display: table !important;
+  }
+  
+  #equiposTable thead {
+    display: table-header-group !important;
+  }
+  
+  #equiposTable tbody {
+    display: table-row-group !important;
+  }
+  
+  #equiposTable tr {
+    display: table-row !important;
+  }
+  
+  #equiposTable th,
+  #equiposTable td {
+    display: table-cell !important;
+  }
 }

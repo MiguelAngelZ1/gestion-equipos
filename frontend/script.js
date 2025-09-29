@@ -520,32 +520,29 @@ function renderEquipos() {
     const row = document.createElement("tr");
     if (rowClass) row.className = rowClass;
 
+    // AGREGAR ATRIBUTO title PARA TOOLTIPS EN CELDAS CON TEXTO LARGO
     row.innerHTML = `
             <td title="${eq.ine || "-"}">${eq.ine || "-"}</td>
-            <td class="nne-column" title="${eq.nne || "-"}">${
-      eq.nne || "-"
-    }</td>
-            <td class="serie-column" title="${eq.serie || "-"}">${
-      eq.serie || "-"
-    }</td>
+            <td class="nne-column" title="${eq.nne || "-"}">${eq.nne || "-"}</td>
+            <td class="serie-column" title="${eq.serie || "-"}">${eq.serie || "-"}</td>
             <td title="${eq.tipo || "-"}">${eq.tipo || "-"}</td>
             <td class="${estadoClass}" title="${estadoText}">${estadoText}</td>
             <td title="${eq.responsable || "-"}">${eq.responsable || "-"}</td>
             <td title="${eq.ubicacion || "-"}">${eq.ubicacion || "-"}</td>
             <td class="text-center">
                 <div class="d-flex justify-content-center">
-                    <button onclick='verDetallesEquipo(${JSON.stringify(
-                      eq
-                    ).replace(
-                      /'/g,
-                      "\\'"
-                    )})' class="btn-action btn-view" title="Ver detalles"><i class="bi bi-eye"></i></button>
-                    <button onclick="editarEquipo('${
-                      eq.id
-                    }')" class="btn-action btn-edit" title="Editar"><i class="bi bi-pencil"></i></button>
-                    <button onclick="eliminarEquipo('${
-                      eq.id
-                    }')" class="btn-action btn-delete" title="Eliminar"><i class="bi bi-trash"></i></button>
+                    <button onclick='verDetallesEquipo(${JSON.stringify(eq).replace(/'/g, "\\'")})' class="btn-action btn-view" title="Ver detalles">
+                      <i class="bi bi-eye"></i>
+                      <span class="d-none d-sm-inline">Ver</span>
+                    </button>
+                    <button onclick="editarEquipo('${eq.id}')" class="btn-action btn-edit" title="Editar">
+                      <i class="bi bi-pencil"></i>
+                      <span class="d-none d-sm-inline">Editar</span>
+                    </button>
+                    <button onclick="eliminarEquipo('${eq.id}')" class="btn-action btn-delete" title="Eliminar">
+                      <i class="bi bi-trash"></i>
+                      <span class="d-none d-sm-inline">Eliminar</span>
+                    </button>
                 </div>
             </td>
         `;
@@ -769,16 +766,12 @@ function verDetallesEquipo(eq) {
                     <div class="info-item">
                         <span class="info-label">Estado</span>
                         <span class="info-value">
-                            <span class="status-value ${statusClass}">${
-    eq.estado || "N/A"
-  }</span>
+                            <span class="status-value ${statusClass}">${eq.estado || "N/A"}</span>
                         </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Responsable</span>
-                        <span class="info-value">${
-                          eq.responsable || "N/A"
-                        }</span>
+                        <span class="info-value">${eq.responsable || "N/A"}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Ubicación Física</span>
@@ -1038,6 +1031,7 @@ function exportarPDF() {
     hideFormStatus();
   }, 1000);
 }
+
 
 // ===== INICIALIZACIÓN (MODIFICADA) =====
 document.addEventListener("DOMContentLoaded", () => {

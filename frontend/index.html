@@ -22,7 +22,6 @@
       </div>
     </header>
 
-
     <main class="p-4">
       <!-- Contenedor de notificaciones -->
       <div class="notification-container" id="notificationContainer"></div>
@@ -107,7 +106,7 @@
             <button type="submit" class="btn btn-primary" id="submitBtn">
               <i class="bi bi-save"></i> Guardar Equipo
             </button>
-            <button type="button" id="cancelEdit" class="btn btn-secondary">
+            <button type="button" id="cancelEdit" class="btn btn-secondary" style="display: none;">
               <i class="bi bi-x-circle"></i> Cancelar Edición
             </button>
           </div>
@@ -129,23 +128,22 @@
         </div>
 
         <div class="table-container">
-          <div class="table-responsive">
-            <table id="equiposTable" class="table table-striped table-hover">
-              <thead class="table-dark">
-                <tr>
-                  <th>INE</th>
-                  <th>NNE</th>
-                  <th>Nro Serie</th>
-                  <th>Tipo</th>
-                  <th>Estado</th>
-                  <th>Responsable</th>
-                  <th>Ubicación</th>
-                  <th class="text-center">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tablaBody"></tbody>
-            </table>
-          </div>
+          <!-- QUITAR table-responsive PARA EVITAR SCROLL HORIZONTAL AUTOMÁTICO -->
+          <table id="equiposTable" class="table table-striped table-hover">
+            <thead class="table-dark">
+              <tr>
+                <th>INE</th>
+                <th>NNE</th>
+                <th>Nro Serie</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Responsable</th>
+                <th>Ubicación</th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tablaBody"></tbody>
+          </table>
         </div>
       </section>
     </main>
