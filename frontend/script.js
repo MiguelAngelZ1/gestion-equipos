@@ -479,16 +479,30 @@ function renderEquipos() {
   const query = searchInput.value.toLowerCase();
   tablaBody.innerHTML = "";
 
-  const filtered = equipos.filter(
-    (eq) =>
+  // Filtrar también por especificaciones (clave y valor)
+  const filtered = equipos.filter((eq) => {
+    const baseMatch =
       (eq.ine || "").toLowerCase().includes(query) ||
       (eq.nne || "").toLowerCase().includes(query) ||
       (eq.serie || "").toLowerCase().includes(query) ||
       (eq.tipo || "").toLowerCase().includes(query) ||
       (eq.estado || "").toLowerCase().includes(query) ||
       (eq.responsable || "").toLowerCase().includes(query) ||
-      (eq.ubicacion || "").toLowerCase().includes(query)
-  );
+      (eq.ubicacion || "").toLowerCase().includes(query);
+
+    if (baseMatch) return true;
+
+    // Revisar especificaciones: puede ser array de {clave, valor}
+    if (eq.especificaciones && Array.isArray(eq.especificaciones)) {
+      for (const s of eq.especificaciones) {
+        const clave = (s.clave || "").toLowerCase();
+        const valor = (s.valor || "").toLowerCase();
+        if (clave.includes(query) || valor.includes(query)) return true;
+      }
+    }
+
+    return false;
+  });
 
   if (filtered.length === 0) {
     const row = document.createElement("tr");
@@ -1043,7 +1057,8 @@ function exportarPDF() {
 document.addEventListener("DOMContentLoaded", () => {
   if (form) form.addEventListener("submit", handleGuardarEquipo);
   if (cancelEditBtn) cancelEditBtn.addEventListener("click", cancelarEdicion);
-  if (searchInput) searchInput.addEventListener("input", cargarEquipos);
+  // Al escribir en la búsqueda, filtrar localmente para incluir especificaciones
+  if (searchInput) searchInput.addEventListener("input", renderEquipos);
 
   const exportPdfBtn = document.getElementById("exportPdfBtn");
   if (exportPdfBtn) {
