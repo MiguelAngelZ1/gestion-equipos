@@ -7,6 +7,7 @@
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
     "migrate": "node backend/db/migrate.js",
+    "sync": "node backend/db/sync.js",
     "test": "echo \"No hay tests configurados\" && exit 0"
   },
   "dependencies": {

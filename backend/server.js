@@ -122,11 +122,21 @@ app.post("/api/equipos", async (req, res) => {
     if (id) {
       // Actualizar equipo existente
       console.log("🔄 Actualizando equipo existente:", id);
-      const result = await db.run(
-        `UPDATE equipos SET ine = ?, nne = ?, serie = ?, tipo = ?, 
-                 estado = ?, responsable = ?, ubicacion = ? WHERE id = ?`,
-        [ine, nne, serie, tipo, estado, responsable, ubicacion, id]
-      );
+      const updateSQL = process.env.DATABASE_URL
+        ? `UPDATE equipos SET ine = $1, nne = $2, serie = $3, tipo = $4, 
+                 estado = $5, responsable = $6, ubicacion = $7, updated_at = NOW() WHERE id = $8`
+        : `UPDATE equipos SET ine = ?, nne = ?, serie = ?, tipo = ?, 
+                 estado = ?, responsable = ?, ubicacion = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+      const result = await db.run(updateSQL, [
+        ine,
+        nne,
+        serie,
+        tipo,
+        estado,
+        responsable,
+        ubicacion,
+        id,
+      ]);
       console.log("✅ Equipo actualizado, cambios:", result.changes);
 
       // Eliminar especificaciones antiguas
@@ -134,11 +144,21 @@ app.post("/api/equipos", async (req, res) => {
     } else {
       // Insertar nuevo equipo
       console.log("➕ Insertando nuevo equipo:", equipoId);
-      const result = await db.run(
-        `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [equipoId, ine, nne, serie, tipo, estado, responsable, ubicacion]
-      );
+      const insertSQL = process.env.DATABASE_URL
+        ? `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`
+        : `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`;
+      const result = await db.run(insertSQL, [
+        equipoId,
+        ine,
+        nne,
+        serie,
+        tipo,
+        estado,
+        responsable,
+        ubicacion,
+      ]);
       console.log("✅ Equipo insertado, cambios:", result.changes);
     }
 
@@ -184,6 +204,60 @@ app.delete("/api/equipos/:id", async (req, res) => {
     res.json({ deleted: result.changes > 0 });
   } catch (err) {
     console.error("❌ Error en DELETE /api/equipos:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint para sincronización (solo disponible en producción)
+app.post("/api/sync", async (req, res) => {
+  try {
+    // Solo permitir sincronización si estamos en producción (PostgreSQL)
+    if (!process.env.DATABASE_URL) {
+      return res.status(400).json({
+        error:
+          "La sincronización desde el servidor solo está disponible en producción",
+        hint: "Usa el script 'npm run sync' desde tu entorno local",
+      });
+    }
+
+    const sync = require("./db/sync");
+    console.log("🔄 Iniciando sincronización desde API...");
+
+    // Ejecutar sincronización en segundo plano
+    sync()
+      .then(() => {
+        console.log("✅ Sincronización completada desde API");
+      })
+      .catch((error) => {
+        console.error("❌ Error en sincronización desde API:", error);
+      });
+
+    res.json({
+      message: "Sincronización iniciada",
+      status: "processing",
+      note: "La sincronización se está ejecutando en segundo plano",
+    });
+  } catch (err) {
+    console.error("❌ Error en POST /api/sync:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint para obtener estado de sincronización
+app.get("/api/sync/status", async (req, res) => {
+  try {
+    const equipos = await db.all("SELECT COUNT(*) as count FROM equipos");
+    const count = equipos[0]?.count || 0;
+
+    res.json({
+      database: process.env.DATABASE_URL
+        ? "PostgreSQL (Railway)"
+        : "SQLite (Local)",
+      equipos: count,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("❌ Error en GET /api/sync/status:", err);
     res.status(500).json({ error: err.message });
   }
 });
