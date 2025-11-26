@@ -57,10 +57,17 @@ class Database {
                     serie TEXT NOT NULL,
                     tipo TEXT NOT NULL,
                     estado TEXT NOT NULL,
-                    responsable TEXT NOT NULL,  -- CORREGIDO: era 'responsible'
+                    responsable TEXT NOT NULL,
                     ubicacion TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT NOW()
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    updated_at TIMESTAMP DEFAULT NOW()
                 )
+            `);
+
+      // Agregar columna updated_at si no existe (para migraciones)
+      await this.client.query(`
+                ALTER TABLE equipos 
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
             `);
 
       await this.client.query(`
@@ -85,11 +92,28 @@ class Database {
                         serie TEXT NOT NULL,
                         tipo TEXT NOT NULL,
                         estado TEXT NOT NULL,
-                        responsable TEXT NOT NULL,  -- CORREGIDO
-                        ubicacion TEXT NOT NULL
+                        responsable TEXT NOT NULL,
+                        ubicacion TEXT NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )`,
             (err) => {
               if (err) reject(err);
+            }
+          );
+
+          // Agregar columna updated_at si no existe (para migraciones)
+          this.client.run(
+            `ALTER TABLE equipos ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`,
+            (err) => {
+              // Ignorar error si la columna ya existe
+            }
+          );
+
+          this.client.run(
+            `ALTER TABLE equipos ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`,
+            (err) => {
+              // Ignorar error si la columna ya existe
             }
           );
 
