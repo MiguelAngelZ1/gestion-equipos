@@ -8,7 +8,7 @@
 }
 
 body {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #c3cfe2 100%);
   min-height: 100vh;
   padding: 20px;
 }
@@ -71,25 +71,18 @@ body {
 
 #equiposTable {
   width: 100%;
-  table-layout: auto;
-  white-space: nowrap;
-  margin-bottom: 0;
+  table-layout: auto;        /* Permite que las columnas crezcan según contenido */
 }
 
 #equiposTable th,
 #equiposTable td {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal !important; /* Permite saltos de línea */
+  word-break: break-word;         /* Permite partir palabras largas */
+  overflow: visible;              /* Evita cortes */
+  text-overflow: clip;            /* Evita “…” */
   padding: 12px 10px;
   vertical-align: middle;
   border-color: #e9ecef;
-}
-
-/* Tooltip para texto largo */
-#equiposTable td {
-  position: relative;
-  cursor: help;
 }
 
 #equiposTable td:hover::after {
@@ -753,4 +746,6 @@ body {
         left: 10px;
         text-align: center;
     }
+
+  
 }
