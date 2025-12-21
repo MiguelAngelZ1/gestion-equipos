@@ -70,6 +70,14 @@ body {
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
+[data-bs-theme="dark"] .section-title {
+  color: #3498db;
+}
+
+[data-bs-theme="dark"] .espec-label {
+  color: #aab7c4;
+}
+
 .form-section {
   background: var(--spec-bg);
   padding: 25px;
@@ -136,20 +144,7 @@ body {
   border-color: var(--border-color);
 }
 
-#equiposTable td:hover::after {
-  content: attr(title);
-  position: absolute;
-  left: 0;
-  top: 100%;
-  color: white; /* Tooltip text always white */
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  z-index: 1000;
-  white-space: normal;
-  width: 200px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
+
 
 /* Columnas específicas con anchos optimizados */
 #equiposTable th:nth-child(1), /* INE */
