@@ -25,6 +25,7 @@
   --text-muted: #adb5bd;
   --border-color: #495057;
   --spec-bg: #343a40;
+
 }
 
 body {
@@ -142,7 +143,6 @@ body {
   vertical-align: middle;
   border-color: var(--border-color);
 }
-
 #equiposTable td:hover::after {
   /* Tooltip removed */
   display: none;
@@ -799,4 +799,6 @@ body {
         left: 10px;
         text-align: center;
     }
+
+  
 }

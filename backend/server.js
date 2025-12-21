@@ -138,20 +138,40 @@ app.post("/api/equipos", async (req, res) => {
 
     if (id) {
       console.log("🔄 Actualizando equipo existente:", id);
-      const result = await db.run(
-        `UPDATE equipos SET ine = ?, nne = ?, serie = ?, tipo = ?, 
-                 estado = ?, responsable = ?, ubicacion = ? WHERE id = ?`,
-        [ine, nne, serie, tipo, estado, responsable, ubicacion, id]
-      );
+      const updateSQL = process.env.DATABASE_URL
+        ? `UPDATE equipos SET ine = $1, nne = $2, serie = $3, tipo = $4, 
+                 estado = $5, responsable = $6, ubicacion = $7, updated_at = NOW() WHERE id = $8`
+        : `UPDATE equipos SET ine = ?, nne = ?, serie = ?, tipo = ?, 
+                 estado = ?, responsable = ?, ubicacion = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+      const result = await db.run(updateSQL, [
+        ine,
+        nne,
+        serie,
+        tipo,
+        estado,
+        responsable,
+        ubicacion,
+        id,
+      ]);
       console.log("✅ Equipo actualizado, cambios:", result.changes);
       await db.run("DELETE FROM especificaciones WHERE equipo_id = ?", [id]);
     } else {
       console.log("➕ Insertando nuevo equipo:", equipoId);
-      const result = await db.run(
-        `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [equipoId, ine, nne, serie, tipo, estado, responsable, ubicacion]
-      );
+      const insertSQL = process.env.DATABASE_URL
+        ? `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`
+        : `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`;
+      const result = await db.run(insertSQL, [
+        equipoId,
+        ine,
+        nne,
+        serie,
+        tipo,
+        estado,
+        responsable,
+        ubicacion,
+      ]);
       console.log("✅ Equipo insertado, cambios:", result.changes);
     }
 
