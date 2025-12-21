@@ -8,6 +8,11 @@
     "dev": "node backend/server.js",
     "migrate": "node backend/db/migrate.js",
     "export-db": "node backend/db/temp-export.js",
+    "sync": "node backend/db/sync.js",
+    "auto-sync": "node backend/db/auto-sync.js",
+    "watch-sync": "node backend/db/sync-watcher.js",
+    "poll-sync": "node backend/db/sync-with-polling.js",
+    "check-sync": "node backend/db/check-sync-ready.js",
     "test": "echo \"No hay tests configurados\" && exit 0"
   },
   "dependencies": {

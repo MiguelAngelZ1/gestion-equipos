@@ -1,5 +1,19 @@
 const path = require("path");
 const sqlite3 = require("sqlite3").verbose();
+const { Pool } = require("pg");
+require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
+
+
+console.log("🔑 DATABASE_PUBLIC_URL:", process.env.DATABASE_PUBLIC_URL);
+
+
+// Conexión a PostgreSQL usando variable de entorno
+const pgPool = new Pool({
+  connectionString: process.env.DATABASE_PUBLIC_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
 
 class Database {
   constructor() {
@@ -35,7 +49,6 @@ class Database {
   async initializeTables() {
     return new Promise((resolve, reject) => {
       this.client.serialize(() => {
-        // Crear tabla de equipos si no existe
         this.client.run(`
           CREATE TABLE IF NOT EXISTS equipos (
             id TEXT PRIMARY KEY,
@@ -49,8 +62,8 @@ class Database {
           )
         `);
 
-        // Crear tabla de especificaciones si no existe
-        this.client.run(`
+        this.client.run(
+          `
           CREATE TABLE IF NOT EXISTS especificaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             equipo_id TEXT NOT NULL,
@@ -58,15 +71,17 @@ class Database {
             valor TEXT NOT NULL,
             FOREIGN KEY (equipo_id) REFERENCES equipos(id) ON DELETE CASCADE
           )
-        `, (err) => {
-          if (err) {
-            console.error("❌ Error creando tablas:", err);
-            reject(err);
-          } else {
-            console.log("✅ Tablas de SQLite listas");
-            resolve();
+        `,
+          (err) => {
+            if (err) {
+              console.error("❌ Error creando tablas:", err);
+              reject(err);
+            } else {
+              console.log("✅ Tablas de SQLite listas");
+              resolve();
+            }
           }
-        });
+        );
       });
     });
   }
@@ -82,27 +97,22 @@ class Database {
 
   async all(sql, params = []) {
     try {
-      // Si es una consulta que incluye especificaciones
-      if (sql.includes('jsonb_agg') || sql.includes('json_build_object')) {
-        // Primero obtenemos todos los equipos
-        const equipos = await this.query('SELECT * FROM equipos ORDER BY ine', []);
-        
-        // Para cada equipo, obtenemos sus especificaciones
-        const equiposConSpecs = await Promise.all(equipos.map(async (equipo) => {
-          const specs = await this.query(
-            'SELECT clave, valor FROM especificaciones WHERE equipo_id = ?',
-            [equipo.id]
-          );
-          return {
-            ...equipo,
-            especificaciones: specs
-          };
-        }));
-        
+      if (sql.includes("jsonb_agg") || sql.includes("json_build_object")) {
+        const equipos = await this.query(
+          "SELECT * FROM equipos ORDER BY ine",
+          []
+        );
+        const equiposConSpecs = await Promise.all(
+          equipos.map(async (equipo) => {
+            const specs = await this.query(
+              "SELECT clave, valor FROM especificaciones WHERE equipo_id = ?",
+              [equipo.id]
+            );
+            return { ...equipo, especificaciones: specs };
+          })
+        );
         return equiposConSpecs;
       }
-      
-      // Para otras consultas, ejecutamos normalmente
       return await this.query(sql, params);
     } catch (error) {
       console.error("Error en consulta:", error);
@@ -121,11 +131,33 @@ class Database {
 
   async run(sql, params = []) {
     return new Promise((resolve, reject) => {
-      this.client.run(sql, params, function(err) {
-        if (err) reject(err);
-        else resolve({ lastID: this.lastID, changes: this.changes });
+      this.client.run(sql, params, async (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          await this.replicateToPostgres(sql, params);
+          resolve({ changes: this.changes });
+        }
       });
     });
+  }
+
+  async replicateToPostgres(sql, params) {
+    try {
+      const isWrite = /insert|update|delete/i.test(sql);
+      if (!isWrite) return;
+
+      // Convertir placeholders de SQLite (?) a PostgreSQL ($1, $2, ...)
+      let pgSql = sql;
+      params.forEach((_, i) => {
+        pgSql = pgSql.replace("?", `$${i + 1}`);
+      });
+
+      await pgPool.query(pgSql, params);
+      console.log("🔁 Replicado en PostgreSQL");
+    } catch (err) {
+      console.error("⚠️ Error replicando en PostgreSQL:", err.message);
+    }
   }
 }
 

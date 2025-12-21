@@ -74,18 +74,27 @@ def wait_for_server(port, timeout=30):
 
 def run_server():
     """Ejecuta el servidor Node.js"""
-    npm_path = get_npm_path()
-    if not npm_path:
+    # Usar node directamente en lugar de npm para evitar problemas de PowerShell
+    node_path = shutil.which("node")
+    if not node_path:
+        print("❌ Error: Node.js no está instalado o no está en el PATH")
         return None
 
     # Determinar el sistema operativo para manejar la terminal correctamente
     if platform.system() == "Windows":
+        # Cambiar al directorio del script antes de ejecutar
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         return subprocess.Popen(
-            [npm_path, "run", "dev"],
+            ["node", "backend/server.js"],
+            cwd=script_dir,
             creationflags=subprocess.CREATE_NEW_CONSOLE
         )
     else:
-        return subprocess.Popen([npm_path, "run", "dev"])
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        return subprocess.Popen(
+            ["node", "backend/server.js"],
+            cwd=script_dir
+        )
 
 def kill_process_and_children(proc):
     try:
@@ -157,8 +166,8 @@ def main():
             if os.path.exists(chrome_path):
                 subprocess.Popen([
                     chrome_path,
-                    f"--new-window",
-                    "--app=http://localhost:{port}",
+                    "--new-window",
+                    f"--app=http://localhost:{port}",
                     "--window-name=Control de Equipos"
                 ])
             else:

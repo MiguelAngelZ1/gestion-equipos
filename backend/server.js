@@ -6,6 +6,27 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Stub para evitar ReferenceError si no hay gestor real
+const autoSyncManager = null;
+
+// Función para disparar sincronización automática
+function triggerAutoSync() {
+  // Disparar sincronización si tenemos DATABASE_URL (para sincronizar con Railway)
+  if (process.env.DATABASE_URL && autoSyncManager) {
+    try {
+      console.log(
+        "🔄 [Server] Disparando sincronización automática desde servidor..."
+      );
+      autoSyncManager.triggerSyncNow();
+    } catch (error) {
+      console.error(
+        "❌ [Server] Error disparando sincronización:",
+        error.message
+      );
+    }
+  }
+}
+
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "../frontend")));
@@ -25,23 +46,22 @@ app.get("/api/equipos", async (req, res) => {
     const { q } = req.query;
 
     let query = `
-            SELECT e.*, 
-                jsonb_agg(json_build_object('clave', esp.clave, 'valor', esp.valor)) AS especificaciones
-            FROM equipos e
-            LEFT JOIN especificaciones esp ON e.id = esp.equipo_id
-        `;
+      SELECT e.*, 
+          jsonb_agg(json_build_object('clave', esp.clave, 'valor', esp.valor)) AS especificaciones
+      FROM equipos e
+      LEFT JOIN especificaciones esp ON e.id = esp.equipo_id
+    `;
     const params = [];
 
     if (q && q.trim() !== "") {
-      // BÚSQUEDA CASE-INSENSITIVE
-      query += `
-                WHERE LOWER(e.ine) LIKE LOWER($1) OR LOWER(e.nne) LIKE LOWER($2) 
-                    OR LOWER(e.serie) LIKE LOWER($3) OR LOWER(e.tipo) LIKE LOWER($4) 
-                    OR LOWER(e.estado) LIKE LOWER($5) OR LOWER(e.responsable) LIKE LOWER($6) 
-                    OR LOWER(e.ubicacion) LIKE LOWER($7)
-                    OR LOWER(esp.clave) LIKE LOWER($8) OR LOWER(esp.valor) LIKE LOWER($9)
-            `;
       const likeQ = `%${q}%`;
+      query += `
+        WHERE LOWER(e.ine) LIKE LOWER($1) OR LOWER(e.nne) LIKE LOWER($2) 
+            OR LOWER(e.serie) LIKE LOWER($3) OR LOWER(e.tipo) LIKE LOWER($4) 
+            OR LOWER(e.estado) LIKE LOWER($5) OR LOWER(e.responsable) LIKE LOWER($6) 
+            OR LOWER(e.ubicacion) LIKE LOWER($7)
+            OR LOWER(esp.clave) LIKE LOWER($8) OR LOWER(esp.valor) LIKE LOWER($9)
+      `;
       params.push(...Array(9).fill(likeQ));
     }
 
@@ -49,10 +69,9 @@ app.get("/api/equipos", async (req, res) => {
 
     const rows = await db.all(query, params);
 
-    // CORREGIDO: PostgreSQL ya devuelve objetos, no necesita JSON.parse
     const equipos = rows.map((row) => ({
       ...row,
-      especificaciones: row.especificaciones || [], // ← Solo esto cambió
+      especificaciones: row.especificaciones || [],
     }));
 
     res.json(equipos);
@@ -84,7 +103,7 @@ app.get("/api/equipos/:id", async (req, res) => {
   }
 });
 
-// Crear o actualizar equipo - VERSIÓN SIMPLIFICADA
+// Crear o actualizar equipo
 app.post("/api/equipos", async (req, res) => {
   try {
     const {
@@ -101,7 +120,6 @@ app.post("/api/equipos", async (req, res) => {
 
     console.log("📝 Recibiendo datos para guardar:", { id, ine, nne });
 
-    // Validaciones
     if (
       !ine ||
       !nne ||
@@ -111,16 +129,14 @@ app.post("/api/equipos", async (req, res) => {
       !responsable ||
       !ubicacion
     ) {
-      return res.status(400).json({
-        error: "Todos los campos principales son obligatorios",
-      });
+      return res
+        .status(400)
+        .json({ error: "Todos los campos principales son obligatorios" });
     }
 
     const equipoId = id || `eq_${Date.now()}`;
 
-    // SIMPLIFICADO: Sin transacciones complejas
     if (id) {
-      // Actualizar equipo existente
       console.log("🔄 Actualizando equipo existente:", id);
       const result = await db.run(
         `UPDATE equipos SET ine = ?, nne = ?, serie = ?, tipo = ?, 
@@ -128,11 +144,8 @@ app.post("/api/equipos", async (req, res) => {
         [ine, nne, serie, tipo, estado, responsable, ubicacion, id]
       );
       console.log("✅ Equipo actualizado, cambios:", result.changes);
-
-      // Eliminar especificaciones antiguas
       await db.run("DELETE FROM especificaciones WHERE equipo_id = ?", [id]);
     } else {
-      // Insertar nuevo equipo
       console.log("➕ Insertando nuevo equipo:", equipoId);
       const result = await db.run(
         `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion) 
@@ -142,7 +155,6 @@ app.post("/api/equipos", async (req, res) => {
       console.log("✅ Equipo insertado, cambios:", result.changes);
     }
 
-    // Insertar especificaciones (si las hay)
     if (especificaciones.length > 0) {
       console.log("📋 Insertando especificaciones:", especificaciones.length);
       for (const spec of especificaciones) {
@@ -156,7 +168,6 @@ app.post("/api/equipos", async (req, res) => {
       console.log("✅ Especificaciones insertadas");
     }
 
-    // VERIFICAR que realmente se guardó
     const equipoGuardado = await db.get("SELECT * FROM equipos WHERE id = ?", [
       equipoId,
     ]);
@@ -165,6 +176,8 @@ app.post("/api/equipos", async (req, res) => {
       equipoGuardado ? "EXISTE" : "NO EXISTE"
     );
 
+    triggerAutoSync();
+
     res.json({ id: equipoId, success: true });
   } catch (err) {
     console.error("❌ Error en POST /api/equipos:", err);
@@ -172,7 +185,7 @@ app.post("/api/equipos", async (req, res) => {
   }
 });
 
-// Eliminar equipo - CON LOGGING
+// Eliminar equipo
 app.delete("/api/equipos/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -181,6 +194,10 @@ app.delete("/api/equipos/:id", async (req, res) => {
     const result = await db.run("DELETE FROM equipos WHERE id = ?", [id]);
     console.log("✅ Eliminación completada, cambios:", result.changes);
 
+    if (result.changes > 0) {
+      triggerAutoSync();
+    }
+
     res.json({ deleted: result.changes > 0 });
   } catch (err) {
     console.error("❌ Error en DELETE /api/equipos:", err);
@@ -188,7 +205,7 @@ app.delete("/api/equipos/:id", async (req, res) => {
   }
 });
 
-// Ruta catch-all para el frontend
+// Ruta catch-all
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
@@ -200,7 +217,7 @@ app.use((err, req, res, next) => {
 });
 
 // Iniciar servidor
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   console.log(`🚀 Servidor iniciado en puerto ${PORT}`);
   console.log(
     `📊 Modo: ${
@@ -209,11 +226,34 @@ app.listen(PORT, async () => {
   );
   console.log(`🌐 URL: http://localhost:${PORT}`);
 
-  // Conectar a la base de datos
   try {
     await db.connect();
-    console.log("✅ Base de datos conectada correctamente");
   } catch (error) {
     console.error("❌ Error conectando a la base de datos:", error);
+  }
+
+  // Stub evita ReferenceError
+  if (autoSyncManager && process.env.DATABASE_URL) {
+    setTimeout(() => {
+      autoSyncManager.startAutoSync();
+    }, 2000);
+  }
+});
+
+// Manejar errores del servidor
+server.on("error", (error) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(`❌ Error: El puerto ${PORT} ya está en uso`);
+    console.error(
+      `💡 Solución: Cierra el proceso que está usando el puerto ${PORT}`
+    );
+    console.error(`💡 O ejecuta: cerrar-puerto-3000.bat`);
+    console.error(
+      `💡 O cambia el puerto con: PORT=3001 node backend/server.js`
+    );
+    process.exit(1);
+  } else {
+    console.error("❌ Error del servidor:", error);
+    process.exit(1);
   }
 });
