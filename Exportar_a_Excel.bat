@@ -1,5 +1,6 @@
 @echo off
 cls
+chcp 65001 > nul
 echo ================================
 echo   Exportador de Excel - Python
 echo ================================
@@ -22,7 +23,6 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo Exportacion completada con exito.
-echo Presiona una tecla para salir...
-pause > nul
+echo Exportacion completada con exito. Cerrando en 3 segundos...
+timeout /t 3 > nul
 exit /b 0
