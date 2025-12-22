@@ -1,22 +1,9 @@
 const path = require("path");
-const sqlite3 = require("sqlite3").verbose();
-const { Pool } = require("pg");
-require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
-
-
-console.log("🔑 DATABASE_PUBLIC_URL:", process.env.DATABASE_PUBLIC_URL);
-
-
-// Conexión a PostgreSQL usando variable de entorno
-const pgPool = new Pool({
-  connectionString: process.env.DATABASE_PUBLIC_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
+const fs = require("fs");
 
 class Database {
   constructor() {
+    this.isPostgreSQL = false;
     this.client = null;
     this.connected = false;
   }
@@ -24,22 +11,39 @@ class Database {
   async connect() {
     if (this.connected) return;
 
-    try {
-      // SQLite para desarrollo local
-      const dbPath = path.resolve(__dirname, "../../equipos.db");
-      console.log("🔍 Conectando a SQLite en:", dbPath);
+    // Detectar si estamos en Railway (PostgreSQL) o local (SQLite)
+    // Leemos la variable aquí para asegurar que está disponible
+    const dbUrl = process.env.DATABASE_URL;
+    this.isPostgreSQL = !!dbUrl;
 
-      this.client = new sqlite3.Database(dbPath, (err) => {
-        if (err) {
-          console.error("❌ Error con SQLite:", err.message);
-        } else {
-          console.log("✅ Conectado a SQLite en:", dbPath);
-        }
-      });
+    try {
+      if (this.isPostgreSQL) {
+        // PostgreSQL para producción (Railway)
+        const { Client } = require("pg");
+        this.client = new Client({
+          connectionString: dbUrl,
+          ssl: { rejectUnauthorized: false },
+        });
+        await this.client.connect();
+        console.log("✅ Conectado a PostgreSQL (Railway)");
+      } else {
+        // SQLite para desarrollo local
+        const sqlite3 = require("sqlite3").verbose();
+        const dbPath = path.resolve(__dirname, "../../equipos.db");
+
+        console.log("🔍 Conectando a SQLite en:", dbPath);
+
+        this.client = new sqlite3.Database(dbPath, (err) => {
+          if (err) {
+            console.error("❌ Error con SQLite:", err.message);
+          } else {
+            console.log("✅ Conectado a SQLite en:", dbPath);
+          }
+        });
+      }
 
       this.connected = true;
       await this.initializeTables();
-      console.log("✅ Base de datos conectada correctamente");
     } catch (error) {
       console.error("❌ Error conectando a la base de datos:", error);
       throw error;
@@ -47,119 +51,177 @@ class Database {
   }
 
   async initializeTables() {
-    return new Promise((resolve, reject) => {
-      this.client.serialize(() => {
-        this.client.run(`
-          CREATE TABLE IF NOT EXISTS equipos (
-            id TEXT PRIMARY KEY,
-            ine TEXT NOT NULL,
-            nne TEXT NOT NULL,
-            serie TEXT NOT NULL,
-            tipo TEXT NOT NULL,
-            estado TEXT NOT NULL,
-            responsable TEXT NOT NULL,
-            ubicacion TEXT NOT NULL
-          )
-        `);
+    if (this.isPostgreSQL) {
+      // Crear tablas en PostgreSQL
+      await this.client.query(`
+                CREATE TABLE IF NOT EXISTS equipos (
+                    id TEXT PRIMARY KEY,
+                    ine TEXT NOT NULL,
+                    nne TEXT NOT NULL,
+                    serie TEXT NOT NULL,
+                    tipo TEXT NOT NULL,
+                    estado TEXT NOT NULL,
+                    responsable TEXT NOT NULL,
+                    ubicacion TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    updated_at TIMESTAMP DEFAULT NOW()
+                )
+            `);
 
-        this.client.run(
-          `
-          CREATE TABLE IF NOT EXISTS especificaciones (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            equipo_id TEXT NOT NULL,
-            clave TEXT NOT NULL,
-            valor TEXT NOT NULL,
-            FOREIGN KEY (equipo_id) REFERENCES equipos(id) ON DELETE CASCADE
-          )
-        `,
-          (err) => {
-            if (err) {
-              console.error("❌ Error creando tablas:", err);
-              reject(err);
-            } else {
-              console.log("✅ Tablas de SQLite listas");
-              resolve();
+      // Agregar columna updated_at si no existe (para migraciones)
+      await this.client.query(`
+                ALTER TABLE equipos 
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
+            `);
+
+      await this.client.query(`
+                CREATE TABLE IF NOT EXISTS especificaciones (
+                    id SERIAL PRIMARY KEY,
+                    equipo_id TEXT NOT NULL,
+                    clave TEXT NOT NULL,
+                    valor TEXT NOT NULL,
+                    FOREIGN KEY (equipo_id) REFERENCES equipos(id) ON DELETE CASCADE
+                )
+            `);
+      console.log("✅ Tablas de PostgreSQL listas");
+    } else {
+      // SQLite mantiene la estructura actual
+      return new Promise((resolve, reject) => {
+        this.client.serialize(() => {
+          this.client.run(
+            `CREATE TABLE IF NOT EXISTS equipos (
+                        id TEXT PRIMARY KEY,
+                        ine TEXT NOT NULL,
+                        nne TEXT NOT NULL,
+                        serie TEXT NOT NULL,
+                        tipo TEXT NOT NULL,
+                        estado TEXT NOT NULL,
+                        responsable TEXT NOT NULL,
+                        ubicacion TEXT NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )`,
+            (err) => {
+              if (err) reject(err);
             }
-          }
-        );
-      });
-    });
-  }
+          );
 
-  async query(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.client.all(sql, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-  }
+          // Agregar columna updated_at si no existe (para migraciones)
+          this.client.run(
+            `ALTER TABLE equipos ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`,
+            (err) => {
+              // Ignorar error si la columna ya existe
+            }
+          );
 
-  async all(sql, params = []) {
-    try {
-      if (sql.includes("jsonb_agg") || sql.includes("json_build_object")) {
-        const equipos = await this.query(
-          "SELECT * FROM equipos ORDER BY ine",
-          []
-        );
-        const equiposConSpecs = await Promise.all(
-          equipos.map(async (equipo) => {
-            const specs = await this.query(
-              "SELECT clave, valor FROM especificaciones WHERE equipo_id = ?",
-              [equipo.id]
-            );
-            return { ...equipo, especificaciones: specs };
-          })
-        );
-        return equiposConSpecs;
-      }
-      return await this.query(sql, params);
-    } catch (error) {
-      console.error("Error en consulta:", error);
-      throw error;
+          this.client.run(
+            `ALTER TABLE equipos ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`,
+            (err) => {
+              // Ignorar error si la columna ya existe
+            }
+          );
+
+          this.client.run(
+            `CREATE TABLE IF NOT EXISTS especificaciones (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        equipo_id TEXT NOT NULL,
+                        clave TEXT NOT NULL,
+                        valor TEXT NOT NULL,
+                        FOREIGN KEY (equipo_id) REFERENCES equipos(id) ON DELETE CASCADE
+                    )`,
+            (err) => {
+              if (err) reject(err);
+              else {
+                console.log("✅ Tablas de SQLite listas");
+                resolve();
+              }
+            }
+          );
+        });
+      });
     }
+  }
+
+  // Método universal para consultas
+  async query(sql, params = []) {
+    if (!this.connected) await this.connect();
+
+    if (this.isPostgreSQL) {
+      // Adaptar consultas SQLite a PostgreSQL
+      const adaptedSQL = this.adaptSQLToPostgreSQL(sql);
+      try {
+        const result = await this.client.query(adaptedSQL, params);
+        return { rows: result.rows, changes: result.rowCount };
+      } catch (error) {
+        console.error("❌ Error en PostgreSQL query:", error);
+        console.error("SQL:", adaptedSQL);
+        console.error("Params:", params);
+        throw error;
+      }
+    } else {
+      return new Promise((resolve, reject) => {
+        if (sql.trim().toUpperCase().startsWith("SELECT")) {
+          this.client.all(sql, params, (err, rows) => {
+            if (err) reject(err);
+            else resolve({ rows, changes: 0 });
+          });
+        } else {
+          this.client.run(sql, params, function (err) {
+            if (err) reject(err);
+            else resolve({ rows: [], changes: this.changes });
+          });
+        }
+      });
+    }
+  }
+
+  adaptSQLToPostgreSQL(sql) {
+    if (!sql) return sql;
+
+    let adaptedSQL = sql;
+
+    // Convertir parámetros ? a $1, $2, $3...
+    let paramCount = 0;
+    adaptedSQL = adaptedSQL.replace(/\?/g, () => {
+      paramCount++;
+      return `$${paramCount}`;
+    });
+
+    // Reemplazos específicos para PostgreSQL
+    adaptedSQL = adaptedSQL.replace(/json_group_array/g, "jsonb_agg");
+    adaptedSQL = adaptedSQL.replace(
+      /json_object\(([^)]+)\)/g,
+      "json_build_object($1)"
+    );
+
+    // Correcciones comunes
+    adaptedSQL = adaptedSQL.replace(/responsible/g, "responsable");
+
+    // Manejar diferencias de sintaxis INSERT
+    adaptedSQL = adaptedSQL.replace(/INSERT OR REPLACE/gi, "INSERT");
+    adaptedSQL = adaptedSQL.replace(/INSERT OR IGNORE/gi, "INSERT");
+
+    // Caracteres de escape
+    adaptedSQL = adaptedSQL.replace(/`/g, '"');
+
+    return adaptedSQL;
+  }
+
+  // Métodos compatibles
+  async all(sql, params = []) {
+    const result = await this.query(sql, params);
+    return result.rows;
   }
 
   async get(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.client.get(sql, params, (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const result = await this.query(sql + " LIMIT 1", params);
+    return result.rows[0] || null;
   }
 
   async run(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.client.run(sql, params, async (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          await this.replicateToPostgres(sql, params);
-          resolve({ changes: this.changes });
-        }
-      });
-    });
-  }
-
-  async replicateToPostgres(sql, params) {
-    try {
-      const isWrite = /insert|update|delete/i.test(sql);
-      if (!isWrite) return;
-
-      // Convertir placeholders de SQLite (?) a PostgreSQL ($1, $2, ...)
-      let pgSql = sql;
-      params.forEach((_, i) => {
-        pgSql = pgSql.replace("?", `$${i + 1}`);
-      });
-
-      await pgPool.query(pgSql, params);
-      console.log("🔁 Replicado en PostgreSQL");
-    } catch (err) {
-      console.error("⚠️ Error replicando en PostgreSQL:", err.message);
-    }
+    const result = await this.query(sql, params);
+    return { changes: result.changes, lastID: result.rows[0]?.id };
   }
 }
 
-const db = new Database();
-module.exports = db;
+module.exports = new Database();
