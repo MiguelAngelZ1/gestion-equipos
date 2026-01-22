@@ -1,28 +1,61 @@
 @echo off
-cls
-chcp 65001 > nul
-echo ================================
-echo   Exportador de Excel - Python
-echo ================================
+chcp 65001 >nul
+title Exportar Equipos a Excel
+
+:: Cambiar al directorio del script
+cd /d "%~dp0"
+
+echo.
+echo ╔════════════════════════════════════════════════════════╗
+echo ║         Exportador de Equipos a Excel                 ║
+echo ╚════════════════════════════════════════════════════════╝
 echo.
 
-set PYTHON_PATH=python
+:: Verificar Python
+echo [1/2] Verificando Python...
+where python >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo ❌ ERROR: Python no está instalado
+    echo    Descarga desde: https://www.python.org
+    pause
+    exit /b 1
+)
+echo ✅ Python encontrado
 
-set SCRIPT_PATH=C:\Users\Miguel Angel Imperio\Documents\Proyectos\Control de Equipos 2.0 - BACKUP\exportar_a_excel.py
+:: Verificar e instalar openpyxl si es necesario
+echo [2/2] Verificando librería openpyxl...
+python -c "import openpyxl" >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo    ⚠️  Instalando openpyxl...
+    pip install openpyxl >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        echo    ❌ Error instalando openpyxl
+        echo    Por favor, ejecuta: pip install openpyxl
+        pause
+        exit /b 1
+    )
+    echo    ✅ openpyxl instalado correctamente
+) else (
+    echo ✅ openpyxl ya instalado
+)
 
-echo Ejecutando script...
+echo.
+echo ═════════════════════════════════════════════════════════
+echo.
+echo 📊 Exportando equipos...
 echo.
 
-python "%SCRIPT_PATH%"
-if %errorlevel% neq 0 (
+:: Ejecutar el script Python
+python exportar_a_excel.py
+
+if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo ❌ ERROR: El script Python fallo.
-    echo Presiona una tecla para salir...
-    pause > nul
+    echo ❌ Error durante la exportación
+    pause
     exit /b 1
 )
 
 echo.
-echo Exportacion completada con exito. Cerrando en 3 segundos...
-timeout /t 3 > nul
-exit /b 0
+echo ✅ Exportación completada exitosamente
+echo.
+timeout /t 3 >nul

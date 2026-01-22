@@ -44,35 +44,34 @@ app.get("/health", (req, res) => {
 app.get("/api/equipos", async (req, res) => {
   try {
     const { q } = req.query;
-
-    let query = `
-      SELECT e.*, 
-          jsonb_agg(json_build_object('clave', esp.clave, 'valor', esp.valor)) AS especificaciones
-      FROM equipos e
-      LEFT JOIN especificaciones esp ON e.id = esp.equipo_id
-    `;
+    
+    // Obtener equipos
+    let equiposQuery = "SELECT * FROM equipos";
     const params = [];
 
     if (q && q.trim() !== "") {
       const likeQ = `%${q}%`;
-      query += `
-        WHERE LOWER(e.ine) LIKE LOWER($1) OR LOWER(e.nne) LIKE LOWER($2) 
-            OR LOWER(e.serie) LIKE LOWER($3) OR LOWER(e.tipo) LIKE LOWER($4) 
-            OR LOWER(e.estado) LIKE LOWER($5) OR LOWER(e.responsable) LIKE LOWER($6) 
-            OR LOWER(e.ubicacion) LIKE LOWER($7)
-            OR LOWER(esp.clave) LIKE LOWER($8) OR LOWER(esp.valor) LIKE LOWER($9)
+      equiposQuery += `
+        WHERE LOWER(ine) LIKE LOWER(?) OR LOWER(nne) LIKE LOWER(?) 
+            OR LOWER(serie) LIKE LOWER(?) OR LOWER(tipo) LIKE LOWER(?) 
+            OR LOWER(estado) LIKE LOWER(?) OR LOWER(responsable) LIKE LOWER(?) 
+            OR LOWER(ubicacion) LIKE LOWER(?)
       `;
-      params.push(...Array(9).fill(likeQ));
+      params.push(...Array(7).fill(likeQ));
     }
 
-    query += ` GROUP BY e.id ORDER BY e.ine`;
+    equiposQuery += " ORDER BY ine";
 
-    const rows = await db.all(query, params);
+    const equipos = await db.all(equiposQuery, params);
 
-    const equipos = rows.map((row) => ({
-      ...row,
-      especificaciones: row.especificaciones || [],
-    }));
+    // Obtener especificaciones para cada equipo
+    for (const equipo of equipos) {
+      const especificaciones = await db.all(
+        "SELECT clave, valor FROM especificaciones WHERE equipo_id = ?",
+        [equipo.id]
+      );
+      equipo.especificaciones = especificaciones || [];
+    }
 
     res.json(equipos);
   } catch (err) {
