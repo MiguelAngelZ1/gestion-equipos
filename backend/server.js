@@ -249,8 +249,16 @@ const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
 
   try {
     await db.connect();
+    
+    // Iniciar sincronización inmediata al arrancar el servidor
+    // Solo si hay DATABASE_URL configurada
+    if (dbUrl) {
+      console.log("🔄 [Server] Iniciando sincronización de arranque...");
+      const sync = require('./db/sync');
+      sync().catch(err => console.error("⚠️ [Server] Error en sincronización inicial:", err.message));
+    }
   } catch (error) {
-    console.error("❌ Error conectando a la base de datos:", error);
+    console.error("❌ [Server] Error conectando a la base de datos:", error);
   }
 
   // Stub evita ReferenceError

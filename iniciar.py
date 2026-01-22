@@ -37,22 +37,16 @@ def run_sync():
         with open(".env", "r") as f:
             content = f.read()
             if "DATABASE_URL=postgresql" in content or "DATABASE_PUBLIC_URL=postgresql" in content:
-                print("   Sincronizando con Railway...")
+                print("   📡 Iniciando sincronización con Railway...")
                 try:
-                    result = subprocess.run(["npm", "run", "sync"], 
-                                          capture_output=True, 
-                                          text=True, 
-                                          timeout=30)
-                    if result.returncode == 0:
-                        print("   ✅ Sincronización completada")
-                    else:
-                        print("   ⚠️  Sincronización falló, continuando con base local")
+                    # Usamos shell=True para que reconozca npm en Windows/Linux sin problemas
+                    subprocess.run("npm run sync", shell=True, check=False)
+                    print("\n   ✅ Proceso de sincronización finalizado")
                 except Exception as e:
-                    print(f"   ⚠️  Error en sincronización: {e}")
-                    print("   Continuando con base de datos local")
+                    print(f"   ⚠️  Error al intentar sincronizar: {e}")
                 return
     
-    print("   ℹ️  Usando base de datos local (Railway no configurado)")
+    print("   ℹ️  Usando base de datos local únicamente")
 
 def run_server():
     """Ejecuta el servidor Node.js"""
