@@ -214,6 +214,7 @@ app.post("/api/equipos", async (req, res) => {
 // Eliminar equipo
 app.delete("/api/equipos/:id", async (req, res) => {
   try {
+    const { id } = req.params;
     console.log("🗑️ Marcando equipo como eliminado:", id);
 
     const deleteSQL = (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL)
