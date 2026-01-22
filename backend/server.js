@@ -48,7 +48,12 @@ app.get("/api/equipos", async (req, res) => {
     const { q } = req.query;
     
     // Obtener equipos que NO estén eliminados
-    let equiposQuery = "SELECT * FROM equipos WHERE (is_deleted IS NULL OR is_deleted = 0 OR is_deleted = false)";
+    // Usamos una sintaxis compatible con SQLite (0/1) y PostgreSQL (false/true)
+    const isPG = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
+    let equiposQuery = isPG 
+      ? "SELECT * FROM equipos WHERE (is_deleted IS NULL OR is_deleted = false)"
+      : "SELECT * FROM equipos WHERE (is_deleted IS NULL OR is_deleted = 0)";
+    
     const params = [];
 
     if (q && q.trim() !== "") {
