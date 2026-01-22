@@ -16,9 +16,10 @@ function triggerAutoSync() {
   if (dbUrl && autoSyncManager) {
     try {
       console.log(
-        "🔄 [Server] Disparando sincronización automática desde servidor..."
+        "🔄 [Server] Disparando sincronización automática..."
       );
-      autoSyncManager.triggerSyncNow();
+      const sync = require('./db/sync');
+      sync().catch(err => console.error("❌ [Server] Error en sincronización:", err.message));
     } catch (error) {
       console.error(
         "❌ [Server] Error disparando sincronización:",
@@ -46,17 +47,17 @@ app.get("/api/equipos", async (req, res) => {
   try {
     const { q } = req.query;
     
-    // Obtener equipos
-    let equiposQuery = "SELECT * FROM equipos";
+    // Obtener equipos que NO estén eliminados
+    let equiposQuery = "SELECT * FROM equipos WHERE (is_deleted IS NULL OR is_deleted = 0 OR is_deleted = false)";
     const params = [];
 
     if (q && q.trim() !== "") {
       const likeQ = `%${q}%`;
       equiposQuery += `
-        WHERE LOWER(ine) LIKE LOWER(?) OR LOWER(nne) LIKE LOWER(?) 
+        AND (LOWER(ine) LIKE LOWER(?) OR LOWER(nne) LIKE LOWER(?) 
             OR LOWER(serie) LIKE LOWER(?) OR LOWER(tipo) LIKE LOWER(?) 
             OR LOWER(estado) LIKE LOWER(?) OR LOWER(responsable) LIKE LOWER(?) 
-            OR LOWER(ubicacion) LIKE LOWER(?)
+            OR LOWER(ubicacion) LIKE LOWER(?))
       `;
       params.push(...Array(7).fill(likeQ));
     }
@@ -208,11 +209,14 @@ app.post("/api/equipos", async (req, res) => {
 // Eliminar equipo
 app.delete("/api/equipos/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    console.log("🗑️ Eliminando equipo:", id);
+    console.log("🗑️ Marcando equipo como eliminado:", id);
 
-    const result = await db.run("DELETE FROM equipos WHERE id = ?", [id]);
-    console.log("✅ Eliminación completada, cambios:", result.changes);
+    const deleteSQL = (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL)
+        ? `UPDATE equipos SET is_deleted = true, updated_at = NOW() WHERE id = $1`
+        : `UPDATE equipos SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+
+    const result = await db.run(deleteSQL, [id]);
+    console.log("✅ Borrado lógico completado, cambios:", result.changes);
 
     if (result.changes > 0) {
       triggerAutoSync();

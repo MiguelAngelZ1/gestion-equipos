@@ -10,7 +10,7 @@ const DATABASE_URL = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL
 
 // Función para calcular hash de un equipo (para detectar cambios)
 function getEquipoHash(equipo) {
-  const data = `${equipo.id}|${equipo.ine}|${equipo.nne}|${equipo.serie}|${equipo.tipo}|${equipo.estado}|${equipo.responsable}|${equipo.ubicacion}`;
+  const data = `${equipo.id}|${equipo.ine}|${equipo.nne}|${equipo.serie}|${equipo.tipo}|${equipo.estado}|${equipo.responsable}|${equipo.ubicacion}|${equipo.is_deleted}`;
   return crypto.createHash("md5").update(data).digest("hex");
 }
 
@@ -59,8 +59,8 @@ async function getEquiposCompletos(db, isPostgreSQL) {
 // Función para insertar/actualizar equipo
 async function upsertEquipo(db, equipo, isPostgreSQL) {
   if (isPostgreSQL) {
-    const sql = `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+    const sql = `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, is_deleted, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
        ON CONFLICT (id) DO UPDATE SET
          ine = EXCLUDED.ine,
          nne = EXCLUDED.nne,
@@ -69,6 +69,7 @@ async function upsertEquipo(db, equipo, isPostgreSQL) {
          estado = EXCLUDED.estado,
          responsable = EXCLUDED.responsable,
          ubicacion = EXCLUDED.ubicacion,
+         is_deleted = EXCLUDED.is_deleted,
          updated_at = NOW()`;
     
     const params = [
@@ -79,7 +80,8 @@ async function upsertEquipo(db, equipo, isPostgreSQL) {
       equipo.tipo,
       equipo.estado,
       equipo.responsable,
-      equipo.ubicacion
+      equipo.ubicacion,
+      equipo.is_deleted ? true : false
     ];
 
     await db.query(sql, params);
@@ -87,8 +89,8 @@ async function upsertEquipo(db, equipo, isPostgreSQL) {
     // SQLite... (mantenemos igual)
     await new Promise((resolve, reject) => {
       db.run(
-        `INSERT OR REPLACE INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        `INSERT OR REPLACE INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, is_deleted, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
         [
           equipo.id,
           equipo.ine,
@@ -98,6 +100,7 @@ async function upsertEquipo(db, equipo, isPostgreSQL) {
           equipo.estado,
           equipo.responsable,
           equipo.ubicacion,
+          equipo.is_deleted ? 1 : 0,
           equipo.created_at || new Date().toISOString(),
         ],
         (err) => {

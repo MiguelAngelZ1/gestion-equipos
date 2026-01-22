@@ -63,16 +63,15 @@ class Database {
                     estado TEXT NOT NULL,
                     responsable TEXT NOT NULL,
                     ubicacion TEXT NOT NULL,
+                    is_deleted BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW()
                 )
             `);
 
-      // Agregar columna updated_at si no existe (para migraciones)
-      await this.client.query(`
-                ALTER TABLE equipos 
-                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
-            `);
+      // Asegurar columnas existen (migración segura)
+      await this.client.query(`ALTER TABLE equipos ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE`);
+      await this.client.query(`ALTER TABLE equipos ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()`);
 
       await this.client.query(`
                 CREATE TABLE IF NOT EXISTS especificaciones (
@@ -97,29 +96,15 @@ class Database {
                         tipo TEXT NOT NULL,
                         estado TEXT NOT NULL,
                         responsable TEXT NOT NULL,
-                        ubicacion TEXT NOT NULL,
+                        is_deleted INTEGER DEFAULT 0,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    )`,
-            (err) => {
-              if (err) reject(err);
-            }
-          );
+                    )`, (err) => { if (err) reject(err); });
 
-          // Agregar columna updated_at si no existe (para migraciones)
-          this.client.run(
-            `ALTER TABLE equipos ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`,
-            (err) => {
-              // Ignorar error si la columna ya existe
-            }
-          );
-
-          this.client.run(
-            `ALTER TABLE equipos ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`,
-            (err) => {
-              // Ignorar error si la columna ya existe
-            }
-          );
+          // Migraciones para SQLite
+          this.client.run(`ALTER TABLE equipos ADD COLUMN is_deleted INTEGER DEFAULT 0`, (err) => {});
+          this.client.run(`ALTER TABLE equipos ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`, (err) => {});
+          this.client.run(`ALTER TABLE equipos ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`, (err) => {});
 
           this.client.run(
             `CREATE TABLE IF NOT EXISTS especificaciones (
