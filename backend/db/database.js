@@ -13,7 +13,7 @@ class Database {
 
     // Detectar si estamos en Railway (PostgreSQL) o local (SQLite)
     // Leemos la variable aquí para asegurar que está disponible
-    const dbUrl = process.env.DATABASE_URL;
+    const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
     this.isPostgreSQL = !!dbUrl;
 
     try {

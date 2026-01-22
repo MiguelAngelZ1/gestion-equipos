@@ -32,11 +32,11 @@ def run_sync():
     """Ejecuta la sincronización si está configurada"""
     print("\n🔄 Verificando sincronización...")
     
-    # Verificar si existe .env con DATABASE_URL
+    # Verificar si existe .env con DATABASE_URL o DATABASE_PUBLIC_URL
     if os.path.exists(".env"):
         with open(".env", "r") as f:
             content = f.read()
-            if "DATABASE_URL=postgresql" in content:
+            if "DATABASE_URL=postgresql" in content or "DATABASE_PUBLIC_URL=postgresql" in content:
                 print("   Sincronizando con Railway...")
                 try:
                     result = subprocess.run(["npm", "run", "sync"], 

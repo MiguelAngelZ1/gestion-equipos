@@ -2,10 +2,11 @@ const sqlite3 = require("sqlite3").verbose();
 const { Client } = require("pg");
 const path = require("path");
 const crypto = require("crypto");
+require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
 
 // Configuración
 const SQLITE_PATH = path.resolve(__dirname, "../../equipos.db");
-const { DATABASE_URL } = process.env;
+const DATABASE_URL = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
 
 // Función para calcular hash de un equipo (para detectar cambios)
 function getEquipoHash(equipo) {
@@ -15,63 +16,51 @@ function getEquipoHash(equipo) {
 
 // Función para obtener todos los equipos con sus especificaciones
 async function getEquiposCompletos(db, isPostgreSQL) {
+  let equipos;
   if (isPostgreSQL) {
-    const result = await db.query(`
-      SELECT e.*, 
-        COALESCE(
-          jsonb_agg(json_build_object('clave', esp.clave, 'valor', esp.valor)) 
-          FILTER (WHERE esp.clave IS NOT NULL),
-          '[]'::jsonb
-        ) AS especificaciones
-      FROM equipos e
-      LEFT JOIN especificaciones esp ON e.id = esp.equipo_id
-      GROUP BY e.id, e.ine, e.nne, e.serie, e.tipo, e.estado, e.responsable, e.ubicacion, e.created_at, e.updated_at
-      ORDER BY e.id
-    `);
-    return result.rows.map((row) => ({
-      ...row,
-      especificaciones: Array.isArray(row.especificaciones)
-        ? row.especificaciones
-        : [],
-    }));
+    const result = await db.query(`SELECT * FROM equipos ORDER BY id`);
+    equipos = result.rows;
   } else {
-    return new Promise((resolve, reject) => {
-      db.all(`SELECT * FROM equipos ORDER BY id`, [], async (err, equipos) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        // Obtener especificaciones para cada equipo
-        const equiposCompletos = await Promise.all(
-          equipos.map(async (equipo) => {
-            const especificaciones = await new Promise((resolve, reject) => {
-              db.all(
-                `SELECT clave, valor FROM especificaciones WHERE equipo_id = ?`,
-                [equipo.id],
-                (err, rows) => {
-                  if (err) reject(err);
-                  else resolve(rows || []);
-                }
-              );
-            });
-            return { ...equipo, especificaciones: especificaciones || [] };
-          })
-        );
-        resolve(equiposCompletos);
+    equipos = await new Promise((resolve, reject) => {
+      db.all(`SELECT * FROM equipos ORDER BY id`, [], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
       });
     });
   }
+
+  // Obtener especificaciones para cada equipo de forma separada para evitar SQL complejo
+  const equiposCompletos = [];
+  for (const equipo of equipos) {
+    let specs;
+    if (isPostgreSQL) {
+      const result = await db.query(
+        `SELECT clave, valor FROM especificaciones WHERE equipo_id = $1`,
+        [equipo.id]
+      );
+      specs = result.rows;
+    } else {
+      specs = await new Promise((resolve, reject) => {
+        db.all(
+          `SELECT clave, valor FROM especificaciones WHERE equipo_id = ?`,
+          [equipo.id],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
+        );
+      });
+    }
+    equiposCompletos.push({ ...equipo, especificaciones: specs || [] });
+  }
+  return equiposCompletos;
 }
 
 // Función para insertar/actualizar equipo
 async function upsertEquipo(db, equipo, isPostgreSQL) {
-  const now = isPostgreSQL ? "NOW()" : "CURRENT_TIMESTAMP";
-
   if (isPostgreSQL) {
-    await db.query(
-      `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9::timestamp, NOW()), NOW())
+    const sql = `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
        ON CONFLICT (id) DO UPDATE SET
          ine = EXCLUDED.ine,
          nne = EXCLUDED.nne,
@@ -80,24 +69,26 @@ async function upsertEquipo(db, equipo, isPostgreSQL) {
          estado = EXCLUDED.estado,
          responsable = EXCLUDED.responsable,
          ubicacion = EXCLUDED.ubicacion,
-         updated_at = NOW()`,
-      [
-        equipo.id,
-        equipo.ine,
-        equipo.nne,
-        equipo.serie,
-        equipo.tipo,
-        equipo.estado,
-        equipo.responsable,
-        equipo.ubicacion,
-        equipo.created_at,
-      ]
-    );
+         updated_at = NOW()`;
+    
+    const params = [
+      equipo.id,
+      equipo.ine,
+      equipo.nne,
+      equipo.serie,
+      equipo.tipo,
+      equipo.estado,
+      equipo.responsable,
+      equipo.ubicacion
+    ];
+
+    await db.query(sql, params);
   } else {
+    // SQLite... (mantenemos igual)
     await new Promise((resolve, reject) => {
       db.run(
         `INSERT OR REPLACE INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
         [
           equipo.id,
           equipo.ine,
@@ -107,7 +98,7 @@ async function upsertEquipo(db, equipo, isPostgreSQL) {
           equipo.estado,
           equipo.responsable,
           equipo.ubicacion,
-          equipo.created_at,
+          equipo.created_at || new Date().toISOString(),
         ],
         (err) => {
           if (err) reject(err);

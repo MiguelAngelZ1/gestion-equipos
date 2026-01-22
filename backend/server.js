@@ -11,8 +11,9 @@ const autoSyncManager = null;
 
 // Función para disparar sincronización automática
 function triggerAutoSync() {
+  const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
   // Disparar sincronización si tenemos DATABASE_URL (para sincronizar con Railway)
-  if (process.env.DATABASE_URL && autoSyncManager) {
+  if (dbUrl && autoSyncManager) {
     try {
       console.log(
         "🔄 [Server] Disparando sincronización automática desde servidor..."
@@ -36,7 +37,7 @@ app.get("/health", (req, res) => {
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
-    database: process.env.DATABASE_URL ? "PostgreSQL" : "SQLite",
+    database: (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL) ? "PostgreSQL" : "SQLite",
   });
 });
 
@@ -137,7 +138,7 @@ app.post("/api/equipos", async (req, res) => {
 
     if (id) {
       console.log("🔄 Actualizando equipo existente:", id);
-      const updateSQL = process.env.DATABASE_URL
+      const updateSQL = (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL)
         ? `UPDATE equipos SET ine = $1, nne = $2, serie = $3, tipo = $4, 
                  estado = $5, responsable = $6, ubicacion = $7, updated_at = NOW() WHERE id = $8`
         : `UPDATE equipos SET ine = ?, nne = ?, serie = ?, tipo = ?, 
@@ -156,7 +157,7 @@ app.post("/api/equipos", async (req, res) => {
       await db.run("DELETE FROM especificaciones WHERE equipo_id = ?", [id]);
     } else {
       console.log("➕ Insertando nuevo equipo:", equipoId);
-      const insertSQL = process.env.DATABASE_URL
+      const insertSQL = (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL)
         ? `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at) 
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`
         : `INSERT INTO equipos (id, ine, nne, serie, tipo, estado, responsable, ubicacion, created_at, updated_at) 
@@ -238,9 +239,10 @@ app.use((err, req, res, next) => {
 // Iniciar servidor
 const server = app.listen(PORT, async () => {
   console.log(`🚀 Servidor iniciado en puerto ${PORT}`);
+const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
   console.log(
     `📊 Modo: ${
-      process.env.DATABASE_URL ? "PostgreSQL (Railway)" : "SQLite (Local)"
+      dbUrl ? "PostgreSQL (Railway)" : "SQLite (Local)"
     }`
   );
   console.log(`🌐 URL: http://localhost:${PORT}`);
@@ -252,7 +254,7 @@ const server = app.listen(PORT, async () => {
   }
 
   // Stub evita ReferenceError
-  if (autoSyncManager && process.env.DATABASE_URL) {
+  if (autoSyncManager && (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL)) {
     setTimeout(() => {
       autoSyncManager.startAutoSync();
     }, 2000);
