@@ -6,20 +6,18 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Stub para evitar ReferenceError si no hay gestor real
-const autoSyncManager = null;
+// La sincronización automática se maneja directamente importando el script de sync
+const syncScript = require("./db/sync");
 
 // Función para disparar sincronización automática
 function triggerAutoSync() {
   const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
-  // Disparar sincronización si tenemos DATABASE_URL (para sincronizar con Railway)
-  if (dbUrl && autoSyncManager) {
+  if (dbUrl) {
     try {
-      console.log(
-        "🔄 [Server] Disparando sincronización automática..."
-      );
-      const sync = require('./db/sync');
-      sync().catch(err => console.error("❌ [Server] Error en sincronización:", err.message));
+      console.log("🔄 [Server] Cambios detectados. Sincronizando con la nube...");
+      syncScript().catch((error) => {
+        console.error("❌ [Server] Error en sincronización de fondo:", error.message);
+      });
     } catch (error) {
       console.error(
         "❌ [Server] Error disparando sincronización:",
@@ -271,12 +269,7 @@ const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
     console.error("❌ [Server] Error conectando a la base de datos:", error);
   }
 
-  // Stub evita ReferenceError
-  if (autoSyncManager && (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL)) {
-    setTimeout(() => {
-      autoSyncManager.startAutoSync();
-    }, 2000);
-  }
+  // El servidor está listo y la sincronización de arranque se ejecutó en el bloque try anterior
 });
 
 // Manejar errores del servidor
