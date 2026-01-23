@@ -40,7 +40,7 @@ body {
   background: var(--bg-card);
   border-radius: 8px;
   box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .custom-header {
@@ -200,11 +200,12 @@ body {
 
 .table thead th {
     position: sticky;
-    top: 0;           /* Se pega al borde superior del contenedor */
-    z-index: 10;      /* Asegura que quede por encima de las filas */
-    background: linear-gradient(135deg, var(--primary-color) 0%, #34495e 100%); /* Fondo sólido para que no se transparente */
-    box-shadow: 0 2px 2px rgba(0,0,0,0.1); /* Sombra sutil para dar profundidad al scroll */
+    top: -20px; /* Ajusta este valor según el padding de tu body/container */
+    z-index: 100;
+    background: var(--primary-color); /* Asegúrate de que tenga un fondo sólido */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
+
 
 .table tbody tr:nth-child(even) {
   background-color: rgba(0, 0, 0, 0.05);
