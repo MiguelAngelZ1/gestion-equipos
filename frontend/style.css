@@ -221,6 +221,8 @@ body {
   transition: all 0.3s ease;
 }
 
+
+
 /* Columnas NNE y Nro Serie en negrita */
 .nne-column, .serie-column {
   font-weight: 700 !important;
@@ -802,3 +804,4 @@ body {
 
   
 }
+

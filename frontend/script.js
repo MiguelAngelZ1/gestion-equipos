@@ -752,7 +752,7 @@ function verDetallesEquipo(eq) {
   let html = `
         <div class="modal-header">
             <h2 class="modal-title">
-                <i class="bi bi-pc-display"></i> Detalles del Equipo ${offlineBadge}
+                 <i class="bi bi-journal-text"></i> Detalles del Equipo ${offlineBadge}
             </h2>
             <button class="btn-close-modal">
                 <i class="bi bi-x-lg"></i>
@@ -784,8 +784,8 @@ function verDetallesEquipo(eq) {
                         <span class="info-label">Estado</span>
                         <span class="info-value">
                             <span class="status-value ${statusClass}">${
-    eq.estado || "N/A"
-  }</span>
+                              eq.estado || "N/A"
+                            }</span>
                         </span>
                     </div>
                     <div class="info-item">
