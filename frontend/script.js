@@ -752,7 +752,7 @@ function verDetallesEquipo(eq) {
   let html = `
         <div class="modal-header">
             <h2 class="modal-title">
-                 <i class="bi bi-journal-text"></i> Detalles del Equipo ${offlineBadge}
+                 <i class="bi bi-pencil-square"></i> Detalles del Equipo ${offlineBadge}
             </h2>
             <button class="btn-close-modal">
                 <i class="bi bi-x-lg"></i>

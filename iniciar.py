@@ -70,9 +70,6 @@ def main():
     print("❗ Para detener el servidor, cierra la ventana del servidor o presiona Ctrl+C")
     print()
 
-    # Ejecutar sincronización
-    run_sync()
-
     # Iniciar el servidor
     print("\n🖥️  Iniciando servidor...")
     server_process = run_server()
