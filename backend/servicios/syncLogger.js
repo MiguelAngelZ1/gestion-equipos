@@ -1,14 +1,20 @@
 /**
  * Imprime el resumen final de la sincronización
  */
-function imprimirResumenSync(stats, totalLocal, totalRemote) {
+function imprimirResumenSync(stats, totalLocal, totalRemote, detalles = []) {
   console.log("\n🎉 Sincronización completada!");
-  console.log("📊 Resumen:");
+  
+  if (detalles.length > 0) {
+    console.log("\n📜 Detalles de los cambios:");
+    detalles.forEach(d => console.log(`   ${d}`));
+  } else {
+    console.log("\nℹ️ No hubo cambios que sincronizar.");
+  }
+
+  console.log("\n📊 Resumen:");
   console.log(`   • Equipos creados: ${stats.creados}`);
   console.log(`   • Equipos actualizados: ${stats.actualizados}`);
-  console.log(
-    `   • Pendientes resueltos en fase Remote → Local: ${stats.pendientesFaseRemoteLocal}`
-  );
+  console.log(`   • Equipos eliminados: ${stats.eliminados}`);
   console.log(
     `   • Conflictos REALES de datos: ${stats.conflictosReales}`
   );

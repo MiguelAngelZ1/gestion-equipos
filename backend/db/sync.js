@@ -113,7 +113,9 @@ async function sync() {
 
     const {
       equiposLocalFinal,
-      equiposRemoteFinal
+      equiposRemoteFinal,
+      stats: newStats,
+      detalles
     } = await sincronizarEquipos({
       obtenerEquiposLocal: () => obtenerEquiposCompletos(sqliteDB, false),
       obtenerEquiposRemote: () => obtenerEquiposCompletos(pgClient, true),
@@ -127,9 +129,6 @@ async function sync() {
           equipo.id,
           equipo.especificaciones || []
         );
-
-        if (equipo.is_deleted) stats.eliminados++;
-        else stats.actualizados++;
       },
 
       actualizarRemote: async (equipo) => {
@@ -141,16 +140,14 @@ async function sync() {
           equipo.id,
           equipo.especificaciones || []
         );
-
-        if (equipo.is_deleted) stats.eliminados++;
-        else stats.actualizados++;
       }
     });
 
     imprimirResumenSync(
-      stats,
+      newStats,
       equiposLocalFinal.length,
-      equiposRemoteFinal.length
+      equiposRemoteFinal.length,
+      detalles
     );
 
   } catch (error) {

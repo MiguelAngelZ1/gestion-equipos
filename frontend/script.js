@@ -203,23 +203,24 @@ async function apiRequest(endpoint, options = {}) {
 
 // ===== CRUD OPERATIONS (MODIFICADAS PARA OFFLINE) =====
 async function cargarEquipos() {
+  const tableLoader = document.getElementById("tableLoader");
   try {
-    showFormStatus("Cargando equipos...", "info", true);
-
+    if (tableLoader) tableLoader.classList.remove("d-none");
+    
     // Intentar cargar desde servidor
     const query = searchInput.value.trim().toLowerCase();
     const endpoint = query
-      ? `/equipos?q=${encodeURIComponent(query)}`
-      : "/equipos";
-    equipos = await apiRequest(endpoint);
+      ? `/api/equipos?q=${encodeURIComponent(query)}`
+      : "/api/equipos";
+    
+    // Usar fetch directo o apiRequest (pero apiRequest ya tiene la lógica offline)
+    equipos = await apiRequest(query ? `/equipos?q=${encodeURIComponent(query)}` : "/equipos");
 
     // Guardar localmente
     guardarDatosLocales();
     renderEquipos();
-    hideFormStatus();
   } catch (error) {
     if (error.message === "OFFLINE_MODE") {
-      // Cargar desde almacenamiento local
       if (cargarDatosLocales()) {
         renderEquipos();
         showNotification(
@@ -238,6 +239,8 @@ async function cargarEquipos() {
       console.error("Error cargando equipos:", error);
       showNotification("Error", "No se pudieron cargar los equipos", "error");
     }
+  } finally {
+    if (tableLoader) tableLoader.classList.add("d-none");
     hideFormStatus();
   }
 }
@@ -340,8 +343,10 @@ function showFormStatus(message, type = "info", loading = false) {
   formStatusText.textContent = message;
   formStatusIcon.innerHTML = "";
 
+  // El usuario pidió eliminar el spinner de carga del formulario
   if (loading) {
-    formStatusIcon.innerHTML = '<span class="loading-spinner"></span>';
+    // Si es carga de equipo, podemos usar un icono de guardando o similar, pero no un spinner animado circular si así lo prefiere
+    formStatusIcon.innerHTML = '<i class="bi bi-hourglass-split text-info"></i>';
   } else {
     let iconClass = "bi-info-circle";
     if (type === "success") iconClass = "bi-check-circle";
@@ -351,7 +356,12 @@ function showFormStatus(message, type = "info", loading = false) {
     formStatusIcon.innerHTML = `<i class="bi ${iconClass} text-${type}"></i>`;
   }
 
-  formStatus.classList.add("visible");
+  // Notificamos también vía el sistema de notificaciones para mayor visibilidad
+  // si el elemento formStatus está oculto
+  const formStatusDiv = document.getElementById("formStatus");
+  if (formStatusDiv && !formStatusDiv.classList.contains("hidden-element")) {
+     formStatusDiv.classList.add("visible");
+  }
 }
 
 function hideFormStatus() {
@@ -1058,7 +1068,16 @@ document.addEventListener("DOMContentLoaded", () => {
   if (form) form.addEventListener("submit", handleGuardarEquipo);
   if (cancelEditBtn) cancelEditBtn.addEventListener("click", cancelarEdicion);
   // Al escribir en la búsqueda, filtrar localmente para incluir especificaciones
-  if (searchInput) searchInput.addEventListener("input", renderEquipos);
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      renderEquipos();
+      // Si se borra la búsqueda, volver a cargar todo el set de datos del API
+      // para asegurar consistencia
+      if (searchInput.value.trim() === "") {
+        cargarEquipos();
+      }
+    });
+  }
 
   const exportPdfBtn = document.getElementById("exportPdfBtn");
   if (exportPdfBtn) {

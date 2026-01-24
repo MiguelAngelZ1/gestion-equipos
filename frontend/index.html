@@ -28,9 +28,9 @@
         <form id="equipoForm">
           <input type="hidden" id="editId" />
           
-          <!-- Indicador de estado del formulario -->
-          <div class="form-status" id="formStatus">
-            <span class="form-status-icon" id="formStatusIcon"></span>
+          <!-- Indicador de estado del formulario (Movido a notificaciones) -->
+          <div id="formStatus" class="hidden-element">
+            <span id="formStatusIcon"></span>
             <span id="formStatusText"></span>
           </div>
           
@@ -126,6 +126,12 @@
 
         <div class="table-container">
           <div class="table-responsive">
+            <div id="tableLoader" class="table-loader d-none">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+              <p class="mt-2">Obteniendo registros...</p>
+            </div>
             <table id="equiposTable" class="table table-striped table-hover">
               <thead class="table-dark">
                 <tr>
@@ -147,15 +153,14 @@
     </main>
     
     <footer class="text-center py-4 mt-4 border-top">
+      <div class="d-flex justify-content-center gap-3 fs-4 mb-3">
+        <i class="bi bi-twitter-x"></i>
+        <i class="bi bi-github"></i>
+        <i class="bi bi-facebook"></i>
+        <i class="bi bi-whatsapp"></i>
+      </div>
       <p class="mb-0 text-muted">© 2025 Sistema de Gestión de Equipos. Creado por Miguel Angel Imperio.</p>
     </footer>
-
-    <div class="d-flex justify-content-center gap-3 fs-4">
-      <i class="bi bi-twitter-x"></i>
-      <i class="bi bi-github"></i>
-      <i class="bi bi-facebook"></i>
-      <i class="bi bi-whatsapp"></i>
-    </div>
 
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
