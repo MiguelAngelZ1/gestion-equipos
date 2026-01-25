@@ -69,8 +69,7 @@ app.get("/api/exportar-nube", async (req, res) => {
     let query = `SELECT * FROM equipos WHERE ${deletedFilter}`;
     const params = [];
 
-    if (id) {
-        // En SQLite el parámetro es ?, en PG a veces es $1 pero mi Database service lo abstrae
+    if (id && id !== "null" && id !== "undefined") {
         query += ` AND id = ?`;
         params.push(id);
     }

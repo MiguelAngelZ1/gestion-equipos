@@ -1138,6 +1138,9 @@ function showActionModal({ title, text, icon = "check-circle", primaryBtn, secon
 }
 
 async function sincronizarExcelNube(equipoId = null) {
+  // Corregir cuando se llama desde un event listener directamente (ID sería un PointerEvent)
+  if (equipoId instanceof Event) equipoId = null;
+  
   // Detectar entorno local por hostname
   const isLocal = window.location.hostname === "localhost" || 
                   window.location.hostname === "127.0.0.1" || 
