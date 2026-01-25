@@ -33,19 +33,21 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "../frontend")));
 
-// Endpoint para exportar a Excel
-app.get("/api/exportar-excel", async (req, res) => {
+// Endpoint para exportar a la Nube (vía Excel)
+app.get("/api/exportar-nube", async (req, res) => {
   let tempExcelPath = "";
   let tempDataPath = "";
   
   try {
-    console.log("📊 [Server] Iniciando exportación a Excel...");
+    const isLocal = !(process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL);
+    console.log("📊 [Server] Iniciando sincronización a la nube...");
+    
     const timestamp = Date.now();
     tempExcelPath = path.join(__dirname, `../temp_export_${timestamp}.xlsx`);
     tempDataPath = path.join(__dirname, `../temp_data_${timestamp}.json`);
     
-    // 1. Obtener todos los equipos desde la base de datos (Postgres o SQLite)
-    const isPG = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
+    // 1. Obtener datos
+    const isPG = !isLocal;
     const deletedFilter = isPG 
       ? "(is_deleted IS NULL OR is_deleted = false)"
       : "(is_deleted IS NULL OR is_deleted = 0)";
@@ -58,10 +60,10 @@ app.get("/api/exportar-excel", async (req, res) => {
       equiposFull.push({ ...eq, especificaciones: specs || [] });
     }
 
-    // 2. Guardar datos en JSON temporal para que Python los lea
+    // 2. JSON temporal
     fs.writeFileSync(tempDataPath, JSON.stringify(equiposFull));
     
-    // 3. Helper para ejecutar Python
+    // 3. Ejecutar Python
     const tryPython = (cmd, args, callback) => {
       exec(`${cmd} ${args}`, (error, stdout, stderr) => {
         if (error && cmd === 'python3') return tryPython('python', args, callback);
@@ -73,23 +75,26 @@ app.get("/api/exportar-excel", async (req, res) => {
     const pythonArgs = `"${scriptPath}" "${tempExcelPath}" "${tempDataPath}"`;
     
     tryPython('python3', pythonArgs, (error, stdout, stderr) => {
+      // Limpieza inmediata de datos
+      if (fs.existsSync(tempDataPath)) fs.unlinkSync(tempDataPath);
+      
       if (error) {
-        console.error(`❌ [Server] Error Python: ${error.message}`);
-        // Limpieza inmediata si falla
-        if (fs.existsSync(tempDataPath)) fs.unlinkSync(tempDataPath);
-        return res.status(500).json({ error: "Error generando Excel", details: error.message });
+        console.error(`❌ [Server] Error Python: ${stderr || error.message}`);
+        return res.status(500).json({ 
+          error: "Error en el proceso de sincronización", 
+          details: stderr || error.message 
+        });
       }
       
-      if (fs.existsSync(tempExcelPath)) {
-        res.download(tempExcelPath, `Equipos_${new Date().toISOString().split('T')[0]}.xlsx`, (err) => {
-          // Limpiar archivos temporales después de enviar o error
-          [tempExcelPath, tempDataPath].forEach(f => {
-            if (fs.existsSync(f)) fs.unlink(f, () => {});
-          });
-        });
-      } else {
-        res.status(500).json({ error: "Archivo Excel no generado." });
-      }
+      // Limpieza de Excel temp
+      if (fs.existsSync(tempExcelPath)) fs.unlinkSync(tempExcelPath);
+      
+      console.log("✅ [Server] Sincronización completada exitosamente.");
+      res.json({ 
+        success: true, 
+        message: "Sincronización completada", 
+        isLocal: os.platform() === 'win32'
+      });
     });
   } catch (err) {
     console.error("❌ [Server] Error crítico:", err);

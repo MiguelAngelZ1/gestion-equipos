@@ -1,5 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodePackages.npm", "python311", "python311Packages.openpyxl"]
+nixPkgs = ["nodePackages.npm", "python3", "python3Packages.openpyxl"]
 
 [phases.install]
 cmds = ["npm install"]
+
+[phases.build]
+cmds = ["npm run build"]

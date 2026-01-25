@@ -1122,36 +1122,26 @@ function showActionModal({ title, text, icon = "check-circle", primaryBtn, secon
   };
 }
 
-async function exportarExcel() {
+async function sincronizarExcelNube() {
   try {
-    showFormStatus("Generando Excel y sincronizando con la nube...", "info", true);
+    showFormStatus("Sincronizando Excel con la Nube...", "info", true);
     
-    // Usar fetch para manejar errores del servidor antes de descargar
-    const response = await fetch("/api/exportar-excel");
-    
+    const response = await fetch("/api/exportar-nube");
+    const data = await response.json();
+
     if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Error en el servidor al generar el Excel");
+        const error = new Error(data.error || "Error en la sincronización");
+        error.details = data.details || "";
+        throw error;
     }
-    
-    // Si la respuesta es OK, obtener el blob y descargar
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Equipos_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
 
     hideFormStatus();
     
     // Mostrar Modal Moderno
     showActionModal({
-      title: "¡Exportación Exitosa!",
-      text: "El archivo Excel se ha descargado y se sincronizó correctamente con OneDrive y Google Drive.",
-      icon: "file-earmark-spreadsheet-fill",
+      title: "Sincronización Exitosa",
+      text: "El reporte Excel ha sido generado y cargado en tu OneDrive y Google Drive correctamente.",
+      icon: "cloud-check-fill",
       primaryBtn: {
         text: "Enviar WhatsApp",
         icon: "whatsapp",
@@ -1160,14 +1150,18 @@ async function exportarExcel() {
       secondaryBtn: "Cerrar",
       onPrimary: () => {
         const numero = "5491134569648";
-        const mensaje = encodeURIComponent("✅ Hola! He realizado una exportación del Sistema de Gestión de Equipos a Excel. Los archivos ya se encuentran actualizados en OneDrive y Google Drive.");
+        const mensaje = encodeURIComponent("✅ ¡Hola! He actualizado el reporte de equipos en la nube. Los archivos ya están disponibles en OneDrive y Google Drive.");
         window.open(`https://wa.me/${numero}?text=${mensaje}`, "_blank");
       }
     });
 
   } catch (error) {
-    console.error("Error exportando a Excel:", error);
-    showNotification("Error de Exportación", error.message, "error");
+    console.error("Error en sincronización nube:", error);
+    const mensajeCompleto = error.details 
+      ? `${error.message}. Detalle: ${error.details}`
+      : error.message;
+      
+    showNotification("Error de Sincronización", mensajeCompleto, "error", 8000);
     hideFormStatus();
   }
 }
@@ -1193,9 +1187,9 @@ document.addEventListener("DOMContentLoaded", () => {
     exportPdfBtn.addEventListener("click", exportarPDF);
   }
 
-  const exportExcelBtn = document.getElementById("exportExcelBtn");
-  if (exportExcelBtn) {
-    exportExcelBtn.addEventListener("click", exportarExcel);
+  const exportCloudBtn = document.getElementById("exportCloudBtn");
+  if (exportCloudBtn) {
+    exportCloudBtn.addEventListener("click", sincronizarExcelNube);
   }
 
   // Event listeners para detección de conexión
