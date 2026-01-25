@@ -226,6 +226,9 @@ async function cargarEquipos() {
     // Usar fetch directo o apiRequest (pero apiRequest ya tiene la lógica offline)
     equipos = await apiRequest(query ? `/equipos?q=${encodeURIComponent(query)}` : "/equipos");
 
+    // Forzar una pequeña espera para que el spinner sea visible si la conexión es ultra rápida
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     // Guardar localmente
     guardarDatosLocales();
     renderEquipos();
@@ -865,9 +868,11 @@ function verDetallesEquipo(eq) {
   html += `</div>`;
 
   html += `
-        <div class="modal-footer">
             <button type="button" class="btn btn-secondary" id="closeModalBtn">
                 <i class="bi bi-x-circle"></i> Cerrar
+            </button>
+            <button type="button" class="btn btn-primary" id="exportCloudModalBtn">
+                <i class="bi bi-cloud-arrow-up"></i> Exportar a la Nube
             </button>
             <button type="button" class="btn btn-danger" id="exportPdfModalBtn">
                 <i class="bi bi-file-pdf"></i> Exportar a PDF
@@ -882,6 +887,7 @@ function verDetallesEquipo(eq) {
   // Event listeners del modal
   const closeModalBtn = modalContent.querySelector("#closeModalBtn");
   const exportPdfModalBtn = modalContent.querySelector("#exportPdfModalBtn");
+  const exportCloudModalBtn = modalContent.querySelector("#exportCloudModalBtn");
   const btnCloseModal = modalContent.querySelector(".btn-close-modal");
 
   if (closeModalBtn) {
@@ -893,6 +899,15 @@ function verDetallesEquipo(eq) {
   if (exportPdfModalBtn) {
     exportPdfModalBtn.addEventListener("click", () => {
       exportarDetallePDF(eq);
+    });
+  }
+
+  if (exportCloudModalBtn) {
+    exportCloudModalBtn.addEventListener("click", () => {
+      // Sincronizar y cerrar este modal para mostrar el de progreso si se desea, 
+      // o mantenerlo abierto. En este caso es mejor cerrar el de detalles.
+      document.body.removeChild(modalOverlay);
+      sincronizarExcelNube();
     });
   }
 
@@ -1188,10 +1203,14 @@ async function sincronizarExcelNube() {
     modal.hide();
     
     // Mostrar Modal de Éxito Final
+    const isSimulated = response.ok && (await response.clone().json()).simulated;
+    
     showActionModal({
-      title: "Sincronización Exitosa",
-      text: "El reporte Excel ha sido generado y cargado en tu OneDrive y Google Drive correctamente.",
-      icon: "cloud-check-fill",
+      title: isSimulated ? "Simulación Completada" : "Sincronización Exitosa",
+      text: isSimulated 
+        ? "En el entorno de nube (Railway) no se pueden guardar archivos locales. Para una sincronización real con tus carpetas físicas, usa el sistema en tu PC local."
+        : "El reporte Excel ha sido generado y cargado en tu OneDrive y Google Drive correctamente.",
+      icon: isSimulated ? "cloud-check" : "cloud-check-fill",
       primaryBtn: {
         text: "Enviar WhatsApp",
         icon: "whatsapp",

@@ -122,11 +122,13 @@ body {
 /* ===== MEJORAS EN LA TABLA - SIN SALTOS DE LÍNEA ===== */
 .table-container {
     overflow: auto;
+    min-height: 400px; /* Asegura que el spinner se vea incluso si no hay datos */
     max-height: 70vh; /* Altura dinámica basada en el viewport */
     position: relative;
     border-radius: 8px;
     border: 1px solid var(--border-color);
     margin-top: 10px;
+    background: var(--bg-card);
 }
 
 #equiposTable {

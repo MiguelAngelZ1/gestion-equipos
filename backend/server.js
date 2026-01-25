@@ -77,12 +77,15 @@ app.get("/api/exportar-nube", async (req, res) => {
     const pythonArgs = `"${scriptPath}" "${tempExcelPath}" "${tempDataPath}"`;
     
     tryPython('python3', pythonArgs, (error, stdout, stderr) => {
+      console.log("📄 [Python Stdout]:", stdout);
+      if (stderr) console.error("⚠️ [Python Stderr]:", stderr);
+
       if (fs.existsSync(tempDataPath)) fs.unlinkSync(tempDataPath);
       if (fs.existsSync(tempExcelPath)) fs.unlinkSync(tempExcelPath);
       
       if (error) {
         console.error(`❌ [Server] Error local: ${stderr || error.message}`);
-        return res.status(500).json({ error: "Error en sincronización local", details: stderr });
+        return res.status(500).json({ error: "Error en sincronización local", details: stderr || stdout || error.message });
       }
       
       res.json({ success: true, simulated: false, message: "Sincronización local completada" });
