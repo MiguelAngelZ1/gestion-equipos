@@ -184,11 +184,21 @@ async function apiRequest(endpoint, options = {}) {
       ...options,
     });
 
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (e) {
+      // No es un JSON o está vacío
     }
 
-    return await response.json();
+    if (!response.ok) {
+      const errorMessage = (data && data.error) 
+        ? data.error 
+        : `Error ${response.status}: ${response.statusText}`;
+      throw new Error(errorMessage);
+    }
+
+    return data;
   } catch (error) {
     // Si es error de conexión (offline), lanzar error específico
     if (

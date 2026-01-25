@@ -138,6 +138,36 @@ app.post("/api/equipos", async (req, res) => {
         .json({ error: "Todos los campos principales son obligatorios" });
     }
 
+    // Validar duplicados de NNE o Serie (solo en equipos no eliminados y que no sean placeholders)
+    const isPG = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
+    const deletedFilter = isPG 
+      ? "(is_deleted IS NULL OR is_deleted = false)"
+      : "(is_deleted IS NULL OR is_deleted = 0)";
+
+    if (nne && nne.trim() !== "" && nne.trim() !== "-") {
+      const existingNNE = await db.get(
+        `SELECT id, ine FROM equipos WHERE nne = ? AND ${deletedFilter} AND id != ?`,
+        [nne.trim(), id || '']
+      );
+      if (existingNNE) {
+        return res.status(400).json({ 
+          error: `El NNE "${nne}" ya está registrado en el equipo: ${existingNNE.ine}` 
+        });
+      }
+    }
+
+    if (serie && serie.trim() !== "" && serie.trim() !== "-") {
+      const existingSerie = await db.get(
+        `SELECT id, ine FROM equipos WHERE serie = ? AND ${deletedFilter} AND id != ?`,
+        [serie.trim(), id || '']
+      );
+      if (existingSerie) {
+        return res.status(400).json({ 
+          error: `El número de serie "${serie}" ya está registrado en el equipo: ${existingSerie.ine}` 
+        });
+      }
+    }
+
     const equipoId = id || `eq_${Date.now()}`;
 
     if (id) {
