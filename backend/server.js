@@ -3,6 +3,7 @@ const cors = require("cors");
 const db = require("./db/database"); // Nueva base de datos
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const { exec } = require("child_process");
 
 const app = express();
