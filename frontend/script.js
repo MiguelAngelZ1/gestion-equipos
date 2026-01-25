@@ -868,6 +868,7 @@ function verDetallesEquipo(eq) {
   html += `</div>`;
 
   html += `
+        <div class="modal-footer">
             <button type="button" class="btn btn-secondary" id="closeModalBtn">
                 <i class="bi bi-x-circle"></i> Cerrar
             </button>
