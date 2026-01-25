@@ -10,6 +10,10 @@ import shutil
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
+# Configurar salida para soportar caracteres especiales en consolas Windows
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 # ================================
 # CONFIGURACIÓN DE RUTAS INTELIGENTE
 # ================================
@@ -21,7 +25,7 @@ def get_cloud_paths():
     home = Path(os.path.expanduser("~"))
     rutas_encontradas = []
     
-    print(f"[DEBUG] Escaneando perfil de usuario para detectar carpetas de nube...")
+    print("[DEBUG] Escaneando perfil de usuario para detectar carpetas de nube...")
     
     try:
         # 1. Buscar OneDrive (dinámico: "OneDrive", "OneDrive - Personal", etc.)
@@ -76,7 +80,7 @@ def formatear_especificaciones(specs):
     return "\n".join(f"{s.get('clave', '')}: {s.get('valor', '')}" for s in specs)
 
 def crear_excel(equipos_data, output_path):
-    print(f"[INFO] Generando Excel base...")
+    print(f"[INFO] Generando Excel con {len(equipos_data)} registros...")
     try:
         wb = Workbook()
         ws = wb.active
@@ -111,32 +115,30 @@ def crear_excel(equipos_data, output_path):
         ws.column_dimensions['A'].width = 35
         ws.column_dimensions['H'].width = 50
         wb.save(output_path)
-        print(f"[OK] Archivo temporal guardado.")
+        print(f"[OK] Excel guardado en: {output_path}")
         return True
     except Exception as e:
-        print(f"[ERROR] No se pudo crear el Excel inicial: {e}")
+        print(f"[ERROR] Error creando Excel: {e}")
         return False
 
-def copiar_a_ruta(origen, ruta_destino):
+def copiar_a_ruta_con_nombre(fuente, carpeta_destino, nombre_nuevo):
     try:
-        # Asegurar que la carpeta existe
-        if not ruta_destino.exists():
-            print(f"[INFO] Creando carpeta: {ruta_destino}")
-            ruta_destino.mkdir(parents=True, exist_ok=True)
+        # Asegurar que la carpeta de destino existe
+        if not carpeta_destino.exists():
+            print(f"[INFO] Creando carpeta de destino: {carpeta_destino}")
+            carpeta_destino.mkdir(parents=True, exist_ok=True)
             
-        nombre_archivo = os.path.basename(origen)
-        destino_final = ruta_destino / nombre_archivo
-        
-        shutil.copy2(origen, destino_final)
+        destino_final = carpeta_destino / nombre_nuevo
+        shutil.copy2(fuente, destino_final)
         print(f"[OK] Sincronizado en: {destino_final}")
         return True
     except Exception as e:
-        print(f"[WARN] No se pudo guardar en {ruta_destino}: {e}")
+        print(f"[WARN] No se pudo guardar en {carpeta_destino}: {e}")
         return False
 
 def main():
     print("\n" + "="*50)
-    print("🚀 INICIANDO EXPORTACIÓN A RUTAS DE NUBE")
+    print("INICIANDO EXPORTACION A RUTAS DE NUBE")
     print("="*50)
 
     if len(sys.argv) < 3:
@@ -180,21 +182,8 @@ def main():
             print("[INFO] Entorno Linux/Nube detectado. Saltando copias locales.")
     
     print("="*50 + "\n")
-
-def copiar_a_ruta_con_nombre(fuente, carpeta_destino, nombre_nuevo):
-    try:
-        # Asegurar que la carpeta de destino existe
-        if not carpeta_destino.exists():
-            print(f"[INFO] Creando carpeta de destino: {carpeta_destino}")
-            carpeta_destino.mkdir(parents=True, exist_ok=True)
-            
-        destino_final = carpeta_destino / nombre_nuevo
-        shutil.copy2(fuente, destino_final)
-        print(f"[OK] Sincronizado en: {destino_final}")
-        return True
-    except Exception as e:
-        print(f"[WARN] No se pudo guardar en {carpeta_destino}: {e}")
-        return False
+    print("PROCESO FINALIZADO")
+    print("="*50)
 
 if __name__ == "__main__":
     main()
