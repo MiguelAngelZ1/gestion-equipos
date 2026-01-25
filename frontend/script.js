@@ -1123,21 +1123,71 @@ function showActionModal({ title, text, icon = "check-circle", primaryBtn, secon
 }
 
 async function sincronizarExcelNube() {
+  const modalEl = document.getElementById('syncProgressModal');
+  const modal = new bootstrap.Modal(modalEl);
+  
+  const odBar = document.getElementById('onedriveBar');
+  const odText = document.getElementById('onedrivePercent');
+  const gdBar = document.getElementById('googledriveBar');
+  const gdText = document.getElementById('googledrivePercent');
+
+  // Reset bars
+  [odBar, gdBar].forEach(bar => {
+    bar.style.width = '0%';
+    bar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-danger';
+  });
+  odText.textContent = '0%';
+  gdText.textContent = '0%';
+
+  const updateBar = async (bar, textEl, targetProgress) => {
+    return new Promise(resolve => {
+      let current = 0;
+      const interval = setInterval(() => {
+        current += 5;
+        if (current > targetProgress) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        bar.style.width = current + '%';
+        textEl.textContent = current + '%';
+        
+        // Lógica de colores invertida: <25 rojo, <50 naranja, <75 celeste (info), 100 verde
+        if (current <= 25) {
+          bar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-danger';
+        } else if (current <= 50) {
+          bar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-warning';
+        } else if (current <= 75) {
+          bar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+        } else {
+          bar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-success';
+        }
+      }, 50);
+    });
+  };
+
   try {
-    showFormStatus("Sincronizando Excel con la Nube...", "info", true);
+    modal.show();
+    
+    // Simular progreso inicial de preparación
+    await updateBar(odBar, odText, 30);
     
     const response = await fetch("/api/exportar-nube");
-    const data = await response.json();
-
     if (!response.ok) {
-        const error = new Error(data.error || "Error en la sincronización");
-        error.details = data.details || "";
-        throw error;
+        const data = await response.json();
+        throw new Error(data.error || "Error en la sincronización");
     }
 
-    hideFormStatus();
+    // Completar OneDrive
+    await updateBar(odBar, odText, 100);
+    // Iniciar y completar Google Drive
+    await updateBar(gdBar, gdText, 100);
+
+    // Pequeña espera para que se vea el 100%
+    await new Promise(r => setTimeout(r, 500));
+    modal.hide();
     
-    // Mostrar Modal Moderno
+    // Mostrar Modal de Éxito Final
     showActionModal({
       title: "Sincronización Exitosa",
       text: "El reporte Excel ha sido generado y cargado en tu OneDrive y Google Drive correctamente.",
@@ -1156,13 +1206,13 @@ async function sincronizarExcelNube() {
     });
 
   } catch (error) {
+    modal.hide();
     console.error("Error en sincronización nube:", error);
     const mensajeCompleto = error.details 
       ? `${error.message}. Detalle: ${error.details}`
       : error.message;
       
     showNotification("Error de Sincronización", mensajeCompleto, "error", 8000);
-    hideFormStatus();
   }
 }
 
