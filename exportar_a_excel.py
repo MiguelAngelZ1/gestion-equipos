@@ -19,21 +19,46 @@ USER_PROFILE = os.environ.get("USERPROFILE", r"C:\Users\Miguel Angel Imperio")
 def get_cloud_paths():
     if not IS_WINDOWS: return None, None
     
-    # Rutas para OneDrive
-    od_paths = [
-        Path(USER_PROFILE) / "OneDrive" / "Exportaciones",
-        Path(r"C:\Users\Miguel Angel Imperio\OneDrive\Exportaciones")
-    ]
-    od_final = next((p for p in od_paths if p.parent.exists()), od_paths[0])
+    home = Path(os.path.expanduser("~"))
+    od_final = None
+    gd_final = None
     
-    # Rutas para Google Drive (soporta español e inglés)
-    gd_paths = [
-        Path(USER_PROFILE) / "Mi unidad" / "Exportaciones",
-        Path(USER_PROFILE) / "My Drive" / "Exportaciones",
-        Path(USER_PROFILE) / "Google Drive" / "Exportaciones",
-        Path(r"C:\Users\Miguel Angel Imperio\Mi unidad\Exportaciones")
-    ]
-    gd_final = next((p for p in gd_paths if p.parent.exists()), gd_paths[0])
+    print(f"[DEBUG] Buscando carpetas en perfil de usuario: {home}")
+    
+    try:
+        # 1. Buscar OneDrive (puede ser "OneDrive", "OneDrive - Personal", etc.)
+        for folder in home.iterdir():
+            if folder.is_dir() and "onedrive" in folder.name.lower():
+                print(f"[DEBUG] Encontrado posible OneDrive: {folder.name}")
+                od_final = folder / "Exportaciones"
+                break
+        
+        # 2. Buscar Google Drive (G:\ o carpeta local)
+        # Primero probar la letra de unidad común G:
+        drive_g = Path("G:/Mi unidad/Exportaciones")
+        if drive_g.parent.exists():
+            print("[DEBUG] Google Drive detectado en Unidad G:")
+            gd_final = drive_g
+        else:
+            # Si no es G:, buscar carpeta en el home (Backup and Sync style)
+            for folder in home.iterdir():
+                if folder.is_dir() and "google drive" in folder.name.lower():
+                    # Buscar Mi Unidad dentro
+                    for sub in folder.iterdir():
+                        if sub.is_dir() and sub.name.lower() in ["mi unidad", "my drive"]:
+                            gd_final = sub / "Exportaciones"
+                            break
+                    if not gd_final: gd_final = folder / "Exportaciones"
+                    break
+    except Exception as e:
+        print(f"[ERROR] Error durante la búsqueda de carpetas: {e}")
+
+    # Fallbacks si no se encontró nada especial
+    if not od_final: od_final = home / "OneDrive" / "Exportaciones"
+    if not gd_final: gd_final = home / "Google Drive" / "Exportaciones"
+    
+    print(f"[DEBUG] Ruta final OneDrive: {od_final}")
+    print(f"[DEBUG] Ruta final Google Drive: {gd_final}")
     
     return od_final, gd_final
 
