@@ -11,17 +11,65 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 # ================================
-# CONFIGURACIÓN DE RUTAS EXACTAS (Propuestas por el Usuario)
+# CONFIGURACIÓN DE RUTAS INTELIGENTE
 # ================================
 IS_WINDOWS = os.name == 'nt'
 
-# Rutas proporcionadas por el usuario
-RUTAS_OBJETIVO = [
-    Path(r"C:\Users\Miguel Angel Imperio\OneDrive\Exportaciones"),
-    Path(r"C:\Users\Miguel Angel Imperio\Mi unidad\Exportaciones"),
-    # Fallback adicional por si Google Drive usa la unidad G:
-    Path(r"G:\Mi unidad\Exportaciones")
-]
+def get_cloud_paths():
+    if not IS_WINDOWS: return []
+    
+    home = Path(os.path.expanduser("~"))
+    rutas_encontradas = []
+    
+    print(f"[DEBUG] Escaneando perfil de usuario para detectar carpetas de nube...")
+    
+    try:
+        # 1. Buscar OneDrive (dinámico: "OneDrive", "OneDrive - Personal", etc.)
+        for folder in home.iterdir():
+            if folder.is_dir() and "onedrive" in folder.name.lower():
+                ruta_od = folder / "Exportaciones"
+                rutas_encontradas.append(ruta_od)
+                print(f"[DEBUG] Detectado OneDrive en: {folder.name}")
+        
+        # 2. Buscar Google Drive (Unidad G: o Carpeta en Home)
+        drive_g = Path("G:/Mi unidad/Exportaciones")
+        if drive_g.parent.exists():
+            rutas_encontradas.append(drive_g)
+            print("[DEBUG] Detectada Unidad G: de Google Drive")
+        
+        for folder in home.iterdir():
+            if folder.is_dir() and "google drive" in folder.name.lower():
+                # Buscar subcarpetas "Mi unidad" o "My Drive"
+                found_sub = False
+                try:
+                    for sub in folder.iterdir():
+                        if sub.is_dir() and sub.name.lower() in ["mi unidad", "my drive"]:
+                            rutas_encontradas.append(sub / "Exportaciones")
+                            found_sub = True
+                            print(f"[DEBUG] Detectado Google Drive (Local) en: {sub.name}")
+                            break
+                except: pass
+                if not found_sub:
+                    rutas_encontradas.append(folder / "Exportaciones")
+                    print(f"[DEBUG] Detectado Google Drive (Local) en: {folder.name}")
+
+        # 3. Fallbacks Estáticos (si no se encontró nada dinámicamente)
+        fallbacks = [
+            Path(r"C:\Users\Miguel Angel Imperio\OneDrive\Exportaciones"),
+            Path(r"C:\Users\Miguel Angel Imperio\Mi unidad\Exportaciones")
+        ]
+        for f in fallbacks:
+            if f.parent.exists() and f not in rutas_encontradas:
+                rutas_encontradas.append(f)
+
+    except Exception as e:
+        print(f"[ERROR] Error durante el escaneo de rutas: {e}")
+
+    # Eliminar duplicados manteniendo el orden
+    resultado = list(dict.fromkeys(rutas_encontradas))
+    return resultado
+
+RUTAS_OBJETIVO = get_cloud_paths()
 
 def formatear_especificaciones(specs):
     if not specs: return ""
