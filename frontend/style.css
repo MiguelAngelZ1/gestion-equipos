@@ -980,3 +980,16 @@ body {
   
 }
 
+/* Brand Colors para iconos de Nube */
+.bi-microsoft {
+    color: #0078d4 !important;
+}
+
+.bi-google {
+    background: linear-gradient(45deg, #4285F4, #EA4335, #FBBC05, #34A853);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: inline-block;
+}
+

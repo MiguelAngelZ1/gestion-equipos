@@ -905,10 +905,9 @@ function verDetallesEquipo(eq) {
 
   if (exportCloudModalBtn) {
     exportCloudModalBtn.addEventListener("click", () => {
-      // Sincronizar y cerrar este modal para mostrar el de progreso si se desea, 
-      // o mantenerlo abierto. En este caso es mejor cerrar el de detalles.
+      // Sincronizar solo este equipo y cerrar este modal
       document.body.removeChild(modalOverlay);
-      sincronizarExcelNube();
+      sincronizarExcelNube(eq.id);
     });
   }
 
@@ -1138,7 +1137,7 @@ function showActionModal({ title, text, icon = "check-circle", primaryBtn, secon
   };
 }
 
-async function sincronizarExcelNube() {
+async function sincronizarExcelNube(equipoId = null) {
   // Detectar entorno local por hostname
   const isLocal = window.location.hostname === "localhost" || 
                   window.location.hostname === "127.0.0.1" || 
@@ -1148,7 +1147,7 @@ async function sincronizarExcelNube() {
     // EN LA NUBE (RAILWAY): Mostrar aviso informativo directamente
     showActionModal({
       title: "Función de Entorno Local",
-      text: "La sincronización física con carpetas de <b>OneDrive</b> y <b>Google Drive</b> solo se puede realizar ejecutando el sistema desde su computadora. En esta versión web, use la opción 'Exportar a PDF' para obtener reportes.",
+      text: `La sincronización física con carpetas de <b>OneDrive</b> y <b>Google Drive</b> solo se puede realizar ejecutando el sistema desde su computadora. En esta versión web, use la opción 'Exportar a PDF' para obtener reportes.`,
       icon: "info-circle-fill",
       primaryBtn: {
         text: "Entendido",
@@ -1207,7 +1206,9 @@ async function sincronizarExcelNube() {
     modal.show();
     await updateBar(odBar, odText, 30);
     
-    const response = await fetch("/api/exportar-nube");
+    // Si hay un ID, exportamos solo ese equipo
+    const endpoint = equipoId ? `/api/exportar-nube?id=${equipoId}` : "/api/exportar-nube";
+    const response = await fetch(endpoint);
     const data = await response.json();
 
     if (!response.ok) {
@@ -1223,8 +1224,10 @@ async function sincronizarExcelNube() {
     
     // ÉXITO REAL (Local)
     showActionModal({
-      title: "¡Éxito!",
-      text: "El reporte Excel ha sido generado y cargado en tu OneDrive y Google Drive correctamente.",
+      title: " ¡Éxito!",
+      text: equipoId 
+        ? "El reporte de este equipo ha sido generado y cargado en tu OneDrive y Google Drive correctly."
+        : "El reporte Excel global ha sido generado y cargado en tu OneDrive y Google Drive correctamente.",
       icon: "cloud-check-fill",
       primaryBtn: {
         text: "Enviar WhatsApp",
@@ -1234,7 +1237,10 @@ async function sincronizarExcelNube() {
       secondaryBtn: "Cerrar",
       onPrimary: () => {
         const numero = "5491134569648";
-        const mensaje = encodeURIComponent("✅ ¡Hola! He actualizado el reporte de equipos en la nube. Los archivos ya están disponibles en OneDrive y Google Drive.");
+        const msg = equipoId 
+            ? "✅ ¡Hola! He actualizado el reporte individual de un equipo en la nube."
+            : "✅ ¡Hola! He actualizado el reporte global de equipos en la nube.";
+        const mensaje = encodeURIComponent(msg + " Los archivos ya están disponibles en OneDrive y Google Drive.");
         window.open(`https://wa.me/${numero}?text=${mensaje}`, "_blank");
       }
     });

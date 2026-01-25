@@ -56,6 +56,7 @@ app.get("/api/exportar-nube", async (req, res) => {
     }
 
     // --- LÓGICA PARA MODO LOCAL ---
+    const { id } = req.query;
     const timestamp = Date.now();
     const tempExcelPath = path.join(__dirname, `../temp_export_${timestamp}.xlsx`);
     const tempDataPath = path.join(__dirname, `../temp_data_${timestamp}.json`);
@@ -65,11 +66,26 @@ app.get("/api/exportar-nube", async (req, res) => {
       ? "(is_deleted IS NULL OR is_deleted = false)"
       : "(is_deleted IS NULL OR is_deleted = 0)";
     
-    const equiposRaw = await db.all(`SELECT * FROM equipos WHERE ${deletedFilter} ORDER BY ine`);
+    let query = `SELECT * FROM equipos WHERE ${deletedFilter}`;
+    const params = [];
+
+    if (id) {
+        // En SQLite el parámetro es ?, en PG a veces es $1 pero mi Database service lo abstrae
+        query += ` AND id = ?`;
+        params.push(id);
+    }
+    
+    query += " ORDER BY ine";
+    
+    const equiposRaw = await db.all(query, params);
     const equiposFull = [];
     for (const eq of equiposRaw) {
       const specs = await db.all("SELECT clave, valor FROM especificaciones WHERE equipo_id = ?", [eq.id]);
       equiposFull.push({ ...eq, especificaciones: specs || [] });
+    }
+
+    if (equiposFull.length === 0) {
+        return res.status(404).json({ error: "No se encontraron equipos para exportar." });
     }
 
     fs.writeFileSync(tempDataPath, JSON.stringify(equiposFull));

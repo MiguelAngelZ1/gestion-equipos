@@ -156,9 +156,16 @@ def main():
         print(f"[ERROR] Fallo al leer datos: {e}")
         sys.exit(1)
 
-    # 1. Crear el nombre de archivo final (ej: Reporte_Equipos_2025-01-24.xlsx)
+    # 1. Crear el nombre de archivo final
     fecha_str = datetime.now().strftime("%Y-%m-%d")
-    nombre_final = f"Reporte_Equipos_{fecha_str}.xlsx"
+    
+    if len(equipos_data) == 1:
+        # Exportación individual: Incluir nombre del equipo
+        ine_nombre = str(equipos_data[0].get('ine', 'Equipo')).replace(" ", "_")
+        nombre_final = f"Equipo_{ine_nombre}_{fecha_str}.xlsx"
+    else:
+        # Exportación global
+        nombre_final = f"Reporte_Equipos_Global_{fecha_str}.xlsx"
 
     # 2. Crear el archivo Excel en la ruta temporal
     if crear_excel(equipos_data, str(temp_origen)):
