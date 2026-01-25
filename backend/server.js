@@ -40,13 +40,28 @@ app.get("/api/exportar-excel", async (req, res) => {
     const timestamp = Date.now();
     const tempFilePath = path.join(__dirname, `../temp_export_${timestamp}.xlsx`);
     
-    // Ejecutar el script de Python pasando la ruta temporal
-    const pythonCmd = `python "${path.join(__dirname, "../exportar_a_excel.py")}" "${tempFilePath}"`;
+    // Probar primero con python3 (estándar en Linux/Railway) y luego con python
+    const tryPython = (cmd, args, callback) => {
+      const fullCmd = `${cmd} ${args}`;
+      exec(fullCmd, (error, stdout, stderr) => {
+        if (error && cmd === 'python3') {
+          console.log("⚠️ [Server] python3 no disponible, probando con 'python'...");
+          return tryPython('python', args, callback);
+        }
+        callback(error, stdout, stderr);
+      });
+    };
+
+    const scriptPath = path.join(__dirname, "../exportar_a_excel.py");
+    const args = `"${scriptPath}" "${tempFilePath}"`;
     
-    exec(pythonCmd, (error, stdout, stderr) => {
+    tryPython('python3', args, (error, stdout, stderr) => {
       if (error) {
         console.error(`❌ [Server] Error ejecutando script Python: ${error.message}`);
-        return res.status(500).json({ error: "No se pudo generar el archivo Excel. Verifique que Python y openpyxl estén instalados." });
+        return res.status(500).json({ 
+          error: "No se pudo generar el archivo Excel. Verifique que Python y openpyxl estén instalados en el servidor.",
+          details: error.message 
+        });
       }
       
       console.log(`✅ [Server] Script Python completado: ${stdout}`);

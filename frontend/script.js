@@ -1073,33 +1073,101 @@ function exportarPDF() {
   }, 1000);
 }
 
+// ===== MODALES DE ACCIÓN MODERNOS =====
+function showActionModal({ title, text, icon = "check-circle", primaryBtn, secondaryBtn, onPrimary, onSecondary }) {
+  const overlay = document.createElement("div");
+  overlay.className = "action-modal-overlay";
+  
+  const modal = document.createElement("div");
+  modal.className = "action-modal";
+  
+  modal.innerHTML = `
+    <div class="action-modal-icon">
+      <i class="bi bi-${icon}"></i>
+    </div>
+    <h3 class="action-modal-title">${title}</h3>
+    <p class="action-modal-text">${text}</p>
+    <div class="action-modal-buttons">
+      ${secondaryBtn ? `<button class="btn-modal btn-modal-secondary" id="btnSecondary">${secondaryBtn}</button>` : ""}
+      <button class="btn-modal ${primaryBtn.class || 'btn-modal-primary'}" id="btnPrimary">
+        ${primaryBtn.icon ? `<i class="bi bi-${primaryBtn.icon}"></i>` : ""}
+        ${primaryBtn.text}
+      </button>
+    </div>
+  `;
+  
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  
+  const close = () => {
+    modal.style.animation = "scaleIn 0.2s reverse forwards";
+    overlay.style.opacity = "0";
+    setTimeout(() => document.body.removeChild(overlay), 200);
+  };
+  
+  modal.querySelector("#btnPrimary").onclick = () => {
+    if (onPrimary) onPrimary();
+    close();
+  };
+  
+  if (secondaryBtn) {
+    modal.querySelector("#btnSecondary").onclick = () => {
+      if (onSecondary) onSecondary();
+      close();
+    };
+  }
+  
+  overlay.onclick = (e) => {
+    if (e.target === overlay) close();
+  };
+}
+
 async function exportarExcel() {
   try {
     showFormStatus("Generando Excel y sincronizando con la nube...", "info", true);
     
-    // El endpoint devuelve un archivo para descargar
-    window.location.href = "/api/exportar-excel";
+    // Usar fetch para manejar errores del servidor antes de descargar
+    const response = await fetch("/api/exportar-excel");
     
-    // Esperar un poco para mostrar la notificación de éxito
-    setTimeout(() => {
-      showNotification(
-        "Excel Generado",
-        "El archivo se ha descargado y se sincronizó con OneDrive y Google Drive.",
-        "success"
-      );
-      hideFormStatus();
-      
-      // Ofrecer enviar WhatsApp
-      if (confirm("¿Deseas enviar una notificación de la exportación por WhatsApp?")) {
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error en el servidor al generar el Excel");
+    }
+    
+    // Si la respuesta es OK, obtener el blob y descargar
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Equipos_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    hideFormStatus();
+    
+    // Mostrar Modal Moderno
+    showActionModal({
+      title: "¡Exportación Exitosa!",
+      text: "El archivo Excel se ha descargado y se sincronizó correctamente con OneDrive y Google Drive.",
+      icon: "file-earmark-spreadsheet-fill",
+      primaryBtn: {
+        text: "Enviar WhatsApp",
+        icon: "whatsapp",
+        class: "btn-modal-whatsapp"
+      },
+      secondaryBtn: "Cerrar",
+      onPrimary: () => {
         const numero = "5491134569648";
         const mensaje = encodeURIComponent("✅ Hola! He realizado una exportación del Sistema de Gestión de Equipos a Excel. Los archivos ya se encuentran actualizados en OneDrive y Google Drive.");
         window.open(`https://wa.me/${numero}?text=${mensaje}`, "_blank");
       }
-    }, 2000);
+    });
 
   } catch (error) {
     console.error("Error exportando a Excel:", error);
-    showNotification("Error", "No se pudo realizar la exportación a Excel", "error");
+    showNotification("Error de Exportación", error.message, "error");
     hideFormStatus();
   }
 }
