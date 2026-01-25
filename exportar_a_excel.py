@@ -143,7 +143,7 @@ def main():
         print("[ERROR] Faltan argumentos.")
         sys.exit(1)
 
-    temp_output = Path(sys.argv[1])
+    temp_origen = Path(sys.argv[1])
     data_source = sys.argv[2]
 
     # Cargar datos
@@ -154,25 +154,47 @@ def main():
         print(f"[ERROR] Fallo al leer datos: {e}")
         sys.exit(1)
 
-    # 1. Crear el archivo Excel en la ruta temporal compartida
-    if crear_excel(equipos_data, str(temp_output)):
-        # 2. Si estamos en Windows, realizar las copias a las carpetas de nube
+    # 1. Crear el nombre de archivo final (ej: Reporte_Equipos_2025-01-24.xlsx)
+    fecha_str = datetime.now().strftime("%Y-%m-%d")
+    nombre_final = f"Reporte_Equipos_{fecha_str}.xlsx"
+
+    # 2. Crear el archivo Excel en la ruta temporal
+    if crear_excel(equipos_data, str(temp_origen)):
+        # 3. Si estamos en Windows, realizar las copias a las carpetas de nube
         if IS_WINDOWS:
             exitos = 0
-            for ruta in RUTAS_OBJETIVO:
-                if copiar_a_ruta(temp_output, ruta):
+            if not RUTAS_OBJETIVO:
+                print("[WARN] No se detectaron carpetas de nube automáticamente.")
+            
+            for ruta_base in RUTAS_OBJETIVO:
+                # Aseguramos que el archivo vaya SIEMPRE dentro de la subcarpeta 'Exportaciones'
+                if copiar_a_ruta_con_nombre(temp_origen, ruta_base, nombre_final):
                     exitos += 1
             
             if exitos == 0:
                 print("[ERROR] No se pudo guardar en NINGUNA de las carpetas de nube.")
-                # Intentamos guardar en el escritorio como último recurso
-                escritorio = Path(os.path.expanduser("~/Desktop")) / os.path.basename(temp_output)
-                shutil.copy2(temp_output, escritorio)
-                print(f"[AVISO] Se guardó una copia en el Escritorio: {escritorio}")
+                # Fallback al Escritorio si todo falla
+                escritorio = Path(os.path.expanduser("~/Desktop")) / "Respaldo_Exportaciones"
+                copiar_a_ruta_con_nombre(temp_origen, escritorio, nombre_final)
         else:
             print("[INFO] Entorno Linux/Nube detectado. Saltando copias locales.")
     
     print("="*50 + "\n")
+
+def copiar_a_ruta_con_nombre(fuente, carpeta_destino, nombre_nuevo):
+    try:
+        # Asegurar que la carpeta de destino existe
+        if not carpeta_destino.exists():
+            print(f"[INFO] Creando carpeta de destino: {carpeta_destino}")
+            carpeta_destino.mkdir(parents=True, exist_ok=True)
+            
+        destino_final = carpeta_destino / nombre_nuevo
+        shutil.copy2(fuente, destino_final)
+        print(f"[OK] Sincronizado en: {destino_final}")
+        return True
+    except Exception as e:
+        print(f"[WARN] No se pudo guardar en {carpeta_destino}: {e}")
+        return False
 
 if __name__ == "__main__":
     main()
