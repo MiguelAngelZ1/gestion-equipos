@@ -35,13 +35,15 @@ app.use(express.static(path.join(__dirname, "../frontend")));
 
 // Endpoint para exportar a la Nube (vía Excel)
 app.get("/api/exportar-nube", async (req, res) => {
-  const isProduction = !!(process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL);
+  // Detectar si es un entorno de servidor (Linux) o local (Windows)
+  // Cambiamos la lógica: si es Windows, SIEMPRE intentamos real sync aunque estemos usando DB de nube.
+  const isCloudServer = os.platform() !== 'win32';
   
   try {
-    console.log(`📊 [Server] Solicitud de sincronización (Modo: ${isProduction ? 'Producción/Simulado' : 'Local/Real'})`);
+    console.log(`📊 [Server] Solicitud de sincronización (Entorno: ${isCloudServer ? 'Servidor/Simulado' : 'Windows Local/Real'})`);
 
-    // En PRODUCCIÓN (Railway), simulamos el proceso para evitar errores de rutas de Windows o falta de librerías
-    if (isProduction) {
+    // En el SERVIDOR (Railway/Linux), simulamos el proceso
+    if (isCloudServer) {
       // Simulamos un pequeño delay de procesamiento
       await new Promise(resolve => setTimeout(resolve, 1500));
       
