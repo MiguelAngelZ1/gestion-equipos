@@ -60,7 +60,12 @@ app.get("/api/exportar-nube", async (req, res) => {
     const tempExcelPath = path.join(__dirname, `../temp_export_${timestamp}.xlsx`);
     const tempDataPath = path.join(__dirname, `../temp_data_${timestamp}.json`);
     
-    const equiposRaw = await db.all(`SELECT * FROM equipos WHERE (is_deleted IS NULL OR is_deleted = 0) ORDER BY ine`);
+    const isPG = !!(process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL);
+    const deletedFilter = isPG 
+      ? "(is_deleted IS NULL OR is_deleted = false)"
+      : "(is_deleted IS NULL OR is_deleted = 0)";
+    
+    const equiposRaw = await db.all(`SELECT * FROM equipos WHERE ${deletedFilter} ORDER BY ine`);
     const equiposFull = [];
     for (const eq of equiposRaw) {
       const specs = await db.all("SELECT clave, valor FROM especificaciones WHERE equipo_id = ?", [eq.id]);
