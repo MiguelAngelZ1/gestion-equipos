@@ -121,12 +121,11 @@ body {
 
 /* ===== MEJORAS EN LA TABLA - SIN SALTOS DE LÍNEA ===== */
 .table-container {
-    overflow-x: auto;
-    overflow-y: auto;
-    max-height: 600px; /* Ajusta esta altura según prefieras */
+    overflow: auto;
+    max-height: 650px;
     position: relative;
     border-radius: 8px;
-    /* Mantén tus otros estilos de sombra y margen */
+    border: 1px solid var(--border-color);
 }
 
 #equiposTable {
@@ -200,10 +199,12 @@ body {
 
 .table thead th {
     position: sticky;
-    top: -20px; /* Ajusta este valor según el padding de tu body/container */
+    top: 0;
     z-index: 100;
-    background: var(--primary-color); /* Asegúrate de que tenga un fondo sólido */
+    background-color: var(--primary-color) !important;
+    color: white;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    border-bottom: 2px solid var(--secondary-color);
 }
 
 
@@ -432,15 +433,38 @@ body {
 
 .table-loader {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 101;
-  text-align: center;
-  background: var(--bg-card);
-  padding: 20px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  color: white;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+[data-bs-theme="dark"] .table-loader {
+  background: rgba(33, 37, 41, 0.7);
+}
+
+.table-loader .spinner-border {
+  width: 3rem;
+  height: 3rem;
+  border-width: 0.3em;
+  margin-bottom: 1rem;
+}
+
+.table-loader p {
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 /* MODAL DE DETALLES MEJORADO */
