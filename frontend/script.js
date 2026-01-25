@@ -1139,6 +1139,28 @@ function showActionModal({ title, text, icon = "check-circle", primaryBtn, secon
 }
 
 async function sincronizarExcelNube() {
+  // Detectar entorno local por hostname
+  const isLocal = window.location.hostname === "localhost" || 
+                  window.location.hostname === "127.0.0.1" || 
+                  window.location.hostname.includes("192.168.");
+
+  if (!isLocal) {
+    // EN LA NUBE (RAILWAY): Mostrar aviso informativo directamente
+    showActionModal({
+      title: "Función de Entorno Local",
+      text: "La sincronización física con carpetas de <b>OneDrive</b> y <b>Google Drive</b> solo se puede realizar ejecutando el sistema desde su computadora. En esta versión web, use la opción 'Exportar a PDF' para obtener reportes.",
+      icon: "info-circle-fill",
+      primaryBtn: {
+        text: "Entendido",
+        icon: "check2",
+        class: "btn-modal-primary"
+      },
+      secondaryBtn: null
+    });
+    return;
+  }
+
+  // EN LOCAL: Proceder con el flujo de carga y sincronización real
   const modalEl = document.getElementById('syncProgressModal');
   const modal = new bootstrap.Modal(modalEl);
   
@@ -1168,7 +1190,6 @@ async function sincronizarExcelNube() {
         bar.style.width = current + '%';
         textEl.textContent = current + '%';
         
-        // Lógica de colores invertida: <25 rojo, <50 naranja, <75 celeste (info), 100 verde
         if (current <= 25) {
           bar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-danger';
         } else if (current <= 50) {
@@ -1184,34 +1205,27 @@ async function sincronizarExcelNube() {
 
   try {
     modal.show();
-    
-    // Simular progreso inicial de preparación
     await updateBar(odBar, odText, 30);
     
     const response = await fetch("/api/exportar-nube");
+    const data = await response.json();
+
     if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Error en la sincronización");
+        throw new Error(data.error || "Error en la sincronización local");
     }
 
-    // Completar OneDrive
+    // Progresión de éxito
     await updateBar(odBar, odText, 100);
-    // Iniciar y completar Google Drive
     await updateBar(gdBar, gdText, 100);
 
-    // Pequeña espera para que se vea el 100%
     await new Promise(r => setTimeout(r, 500));
     modal.hide();
     
-    // Mostrar Modal de Éxito Final
-    const isSimulated = response.ok && (await response.clone().json()).simulated;
-    
+    // ÉXITO REAL (Local)
     showActionModal({
       title: "¡Éxito!",
-      text: isSimulated 
-        ? "El reporte ha sido generado. <b>Nota:</b> Para sincronizar los archivos físicamente en tus carpetas de OneDrive y Google Drive, debes ejecutar este proceso desde el sistema en tu PC local."
-        : "El reporte Excel ha sido generado y cargado en tu OneDrive y Google Drive correctamente.",
-      icon: isSimulated ? "cloud-check" : "cloud-check-fill",
+      text: "El reporte Excel ha sido generado y cargado en tu OneDrive y Google Drive correctamente.",
+      icon: "cloud-check-fill",
       primaryBtn: {
         text: "Enviar WhatsApp",
         icon: "whatsapp",
@@ -1227,12 +1241,8 @@ async function sincronizarExcelNube() {
 
   } catch (error) {
     modal.hide();
-    console.error("Error en sincronización nube:", error);
-    const mensajeCompleto = error.details 
-      ? `${error.message}. Detalle: ${error.details}`
-      : error.message;
-      
-    showNotification("Error de Sincronización", mensajeCompleto, "error", 8000);
+    console.error("Error en sincronización local:", error);
+    showNotification("Error de Sincronización", error.message, "error", 8000);
   }
 }
 
