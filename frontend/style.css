@@ -122,15 +122,18 @@ body {
 /* ===== MEJORAS EN LA TABLA - SIN SALTOS DE LÍNEA ===== */
 .table-container {
     overflow: auto;
-    max-height: 650px;
+    max-height: 70vh; /* Altura dinámica basada en el viewport */
     position: relative;
     border-radius: 8px;
     border: 1px solid var(--border-color);
+    margin-top: 10px;
 }
 
 #equiposTable {
   width: 100%;
-  table-layout: auto;        /* Permite que las columnas crezcan según contenido */
+  table-layout: auto;
+  border-collapse: separate; /* Necesario para que el sticky funcione correctamente */
+  border-spacing: 0;
 }
 
 #equiposTable th,
@@ -197,14 +200,18 @@ body {
   max-width: 140px;
 }
 
-.table thead th {
+/* Encabezados fijos corregidos */
+#equiposTable thead th {
+    position: -webkit-sticky; /* Soporte para Safari */
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 1000;
     background-color: var(--primary-color) !important;
-    color: white;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    border-bottom: 2px solid var(--secondary-color);
+    color: white !important;
+    box-shadow: 0 2px 2px rgba(0,0,0,0.1);
+    border-bottom: 3px solid var(--secondary-color) !important;
+    padding-top: 15px;
+    padding-bottom: 15px;
 }
 
 
