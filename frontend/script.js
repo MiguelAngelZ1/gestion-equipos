@@ -1207,9 +1207,9 @@ async function sincronizarExcelNube() {
     const isSimulated = response.ok && (await response.clone().json()).simulated;
     
     showActionModal({
-      title: isSimulated ? "Simulación Completada" : "Sincronización Exitosa",
+      title: "¡Éxito!",
       text: isSimulated 
-        ? "En el entorno de nube (Railway) no se pueden guardar archivos locales. Para una sincronización real con tus carpetas físicas, usa el sistema en tu PC local."
+        ? "El reporte ha sido generado. <b>Nota:</b> Para sincronizar los archivos físicamente en tus carpetas de OneDrive y Google Drive, debes ejecutar este proceso desde el sistema en tu PC local."
         : "El reporte Excel ha sido generado y cargado en tu OneDrive y Google Drive correctamente.",
       icon: isSimulated ? "cloud-check" : "cloud-check-fill",
       primaryBtn: {

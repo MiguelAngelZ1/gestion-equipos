@@ -11,65 +11,24 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 # ================================
-# CONFIGURACIÓN Y RUTAS (Solo Windows)
+# CONFIGURACIÓN DE RUTAS EXACTAS (Propuestas por el Usuario)
 # ================================
 IS_WINDOWS = os.name == 'nt'
-USER_PROFILE = os.environ.get("USERPROFILE", r"C:\Users\Miguel Angel Imperio")
 
-def get_cloud_paths():
-    if not IS_WINDOWS: return None, None
-    
-    home = Path(os.path.expanduser("~"))
-    od_final = None
-    gd_final = None
-    
-    print(f"[DEBUG] Buscando carpetas en perfil de usuario: {home}")
-    
-    try:
-        # 1. Buscar OneDrive (puede ser "OneDrive", "OneDrive - Personal", etc.)
-        for folder in home.iterdir():
-            if folder.is_dir() and "onedrive" in folder.name.lower():
-                print(f"[DEBUG] Encontrado posible OneDrive: {folder.name}")
-                od_final = folder / "Exportaciones"
-                break
-        
-        # 2. Buscar Google Drive (G:\ o carpeta local)
-        # Primero probar la letra de unidad común G:
-        drive_g = Path("G:/Mi unidad/Exportaciones")
-        if drive_g.parent.exists():
-            print("[DEBUG] Google Drive detectado en Unidad G:")
-            gd_final = drive_g
-        else:
-            # Si no es G:, buscar carpeta en el home (Backup and Sync style)
-            for folder in home.iterdir():
-                if folder.is_dir() and "google drive" in folder.name.lower():
-                    # Buscar Mi Unidad dentro
-                    for sub in folder.iterdir():
-                        if sub.is_dir() and sub.name.lower() in ["mi unidad", "my drive"]:
-                            gd_final = sub / "Exportaciones"
-                            break
-                    if not gd_final: gd_final = folder / "Exportaciones"
-                    break
-    except Exception as e:
-        print(f"[ERROR] Error durante la búsqueda de carpetas: {e}")
-
-    # Fallbacks si no se encontró nada especial
-    if not od_final: od_final = home / "OneDrive" / "Exportaciones"
-    if not gd_final: gd_final = home / "Google Drive" / "Exportaciones"
-    
-    print(f"[DEBUG] Ruta final OneDrive: {od_final}")
-    print(f"[DEBUG] Ruta final Google Drive: {gd_final}")
-    
-    return od_final, gd_final
-
-CARPETA_ONEDRIVE, CARPETA_GOOGLE_DRIVE = get_cloud_paths()
+# Rutas proporcionadas por el usuario
+RUTAS_OBJETIVO = [
+    Path(r"C:\Users\Miguel Angel Imperio\OneDrive\Exportaciones"),
+    Path(r"C:\Users\Miguel Angel Imperio\Mi unidad\Exportaciones"),
+    # Fallback adicional por si Google Drive usa la unidad G:
+    Path(r"G:\Mi unidad\Exportaciones")
+]
 
 def formatear_especificaciones(specs):
     if not specs: return ""
     return "\n".join(f"{s.get('clave', '')}: {s.get('valor', '')}" for s in specs)
 
 def crear_excel(equipos_data, output_path):
-    print(f"[INFO] Generando Excel con {len(equipos_data)} registros...")
+    print(f"[INFO] Generando Excel base...")
     try:
         wb = Workbook()
         ws = wb.active
@@ -104,67 +63,68 @@ def crear_excel(equipos_data, output_path):
         ws.column_dimensions['A'].width = 35
         ws.column_dimensions['H'].width = 50
         wb.save(output_path)
-        print(f"[OK] Excel guardado en: {output_path}")
+        print(f"[OK] Archivo temporal guardado.")
         return True
     except Exception as e:
-        print(f"[ERROR] Error creando Excel: {e}")
+        print(f"[ERROR] No se pudo crear el Excel inicial: {e}")
         return False
 
-def copiar_archivo(origen, destino_folder, nombre_servicio):
-    print(f"[INFO] Intentando copiar a {nombre_servicio}...")
-    if not destino_folder:
-        print(f"[WARN] Ruta de {nombre_servicio} no definida.")
-        return False
-    
+def copiar_a_ruta(origen, ruta_destino):
     try:
-        if not destino_folder.exists():
-            print(f"[INFO] Creando carpeta: {destino_folder}")
-            destino_folder.mkdir(parents=True, exist_ok=True)
+        # Asegurar que la carpeta existe
+        if not ruta_destino.exists():
+            print(f"[INFO] Creando carpeta: {ruta_destino}")
+            ruta_destino.mkdir(parents=True, exist_ok=True)
             
-        destino = destino_folder / os.path.basename(origen)
-        shutil.copy2(origen, destino)
-        print(f"[OK] Copiado exitosamente a: {destino}")
+        nombre_archivo = os.path.basename(origen)
+        destino_final = ruta_destino / nombre_archivo
+        
+        shutil.copy2(origen, destino_final)
+        print(f"[OK] Sincronizado en: {destino_final}")
         return True
     except Exception as e:
-        print(f"[ERROR] No se pudo copiar a {nombre_servicio}: {e}")
+        print(f"[WARN] No se pudo guardar en {ruta_destino}: {e}")
         return False
 
 def main():
-    print("=" * 40)
-    print("🚀 INICIANDO PROCESO DE EXPORTACIÓN")
-    print("=" * 40)
-    
+    print("\n" + "="*50)
+    print("🚀 INICIANDO EXPORTACIÓN A RUTAS DE NUBE")
+    print("="*50)
+
     if len(sys.argv) < 3:
-        print("[ERROR] Argumentos insuficientes.")
+        print("[ERROR] Faltan argumentos.")
         sys.exit(1)
 
-    output_path = Path(sys.argv[1])
+    temp_output = Path(sys.argv[1])
     data_source = sys.argv[2]
-    
-    print(f"[INFO] Sistema Operativo: {os.name}")
 
-    if data_source == 'stdin':
-        equipos_data = json.load(sys.stdin)
-    else:
+    # Cargar datos
+    try:
         with open(data_source, 'r', encoding='utf-8') as f:
             equipos_data = json.load(f)
-
-    # Crear el Excel
-    if crear_excel(equipos_data, str(output_path)):
-        # Sincronización en la nube (Sólo si es Windows)
-        if IS_WINDOWS:
-            print("[INFO] Detectado Windows. Iniciando sincronización de carpetas locales...")
-            copiar_archivo(output_path, CARPETA_ONEDRIVE, "OneDrive")
-            copiar_archivo(output_path, CARPETA_GOOGLE_DRIVE, "Google Drive")
-        else:
-            print("[INFO] No es Windows o entorno de nube. Se omite la copia a carpetas locales.")
-    else:
-        print("[ERROR] No se pudo completar la exportación.")
+    except Exception as e:
+        print(f"[ERROR] Fallo al leer datos: {e}")
         sys.exit(1)
 
-    print("=" * 40)
-    print("🏁 PROCESO FINALIZADO")
-    print("=" * 40)
+    # 1. Crear el archivo Excel en la ruta temporal compartida
+    if crear_excel(equipos_data, str(temp_output)):
+        # 2. Si estamos en Windows, realizar las copias a las carpetas de nube
+        if IS_WINDOWS:
+            exitos = 0
+            for ruta in RUTAS_OBJETIVO:
+                if copiar_a_ruta(temp_output, ruta):
+                    exitos += 1
+            
+            if exitos == 0:
+                print("[ERROR] No se pudo guardar en NINGUNA de las carpetas de nube.")
+                # Intentamos guardar en el escritorio como último recurso
+                escritorio = Path(os.path.expanduser("~/Desktop")) / os.path.basename(temp_output)
+                shutil.copy2(temp_output, escritorio)
+                print(f"[AVISO] Se guardó una copia en el Escritorio: {escritorio}")
+        else:
+            print("[INFO] Entorno Linux/Nube detectado. Saltando copias locales.")
+    
+    print("="*50 + "\n")
 
 if __name__ == "__main__":
     main()
