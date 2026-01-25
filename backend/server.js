@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const db = require("./db/database"); // Nueva base de datos
 const path = require("path");
+const fs = require("fs");
+const { exec } = require("child_process");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,6 +33,44 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "../frontend")));
 
+// Endpoint para exportar a Excel
+app.get("/api/exportar-excel", async (req, res) => {
+  try {
+    console.log("📊 [Server] Iniciando exportación a Excel...");
+    const timestamp = Date.now();
+    const tempFilePath = path.join(__dirname, `../temp_export_${timestamp}.xlsx`);
+    
+    // Ejecutar el script de Python pasando la ruta temporal
+    const pythonCmd = `python "${path.join(__dirname, "../exportar_a_excel.py")}" "${tempFilePath}"`;
+    
+    exec(pythonCmd, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`❌ [Server] Error ejecutando script Python: ${error.message}`);
+        return res.status(500).json({ error: "No se pudo generar el archivo Excel. Verifique que Python y openpyxl estén instalados." });
+      }
+      
+      console.log(`✅ [Server] Script Python completado: ${stdout}`);
+      
+      if (fs.existsSync(tempFilePath)) {
+        res.download(tempFilePath, `Equipos_${new Date().toISOString().split('T')[0]}.xlsx`, (err) => {
+          if (err) {
+            console.error("❌ [Server] Error enviando el archivo:", err);
+          }
+          // Borrar archivo temporal después de enviar
+          fs.unlink(tempFilePath, (unlinkErr) => {
+            if (unlinkErr) console.error("⚠️ [Server] Error borrando temporal:", unlinkErr);
+          });
+        });
+      } else {
+        res.status(500).json({ error: "El archivo Excel no fue generado por el script." });
+      }
+    });
+  } catch (err) {
+    console.error("❌ [Server] Error en /api/exportar-excel:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Health check endpoint para Railway
 app.get("/health", (req, res) => {
   res.json({
@@ -39,6 +79,7 @@ app.get("/health", (req, res) => {
     database: (process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL) ? "PostgreSQL" : "SQLite",
   });
 });
+
 
 // Obtener todos los equipos con búsqueda - VERSIÓN CASE-INSENSITIVE
 app.get("/api/equipos", async (req, res) => {

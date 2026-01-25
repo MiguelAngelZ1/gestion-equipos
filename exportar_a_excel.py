@@ -155,6 +155,9 @@ def main():
     print("[INFO] EXPORTADOR DE EQUIPOS A EXCEL")
     print("=" * 60)
 
+    # Si se pasa un argumento, es la ruta de salida
+    arg_output = sys.argv[1] if len(sys.argv) > 1 else None
+
     db_path = obtener_ruta_db()
     conn = conectar_db(db_path)
 
@@ -162,20 +165,41 @@ def main():
     print(f"[OK] {len(equipos)} equipos detectados.")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"Equipos_Export_{timestamp}.xlsx"
+    
+    # Si no se pasó ruta, usar el default en OneDrive
+    if not arg_output:
+        output_path = CARPETA_ONEDRIVE / filename
+    else:
+        output_path = Path(arg_output)
 
-    # Guardar directamente en OneDrive (no se guarda localmente)
-    output_path = CARPETA_ONEDRIVE / f"Equipos_Export_{timestamp}.xlsx"
+    # Asegurar que la carpeta base del output existe
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     exito = crear_excel(equipos, conn, str(output_path))
     conn.close()
 
-    print(f"\n[OK] Archivo guardado en OneDrive: {output_path}")
+    if not exito:
+        print("[ERROR] Falló la creación del Excel")
+        sys.exit(1)
 
-    # Copiar a Google Drive
-    copiar_archivo(output_path, CARPETA_GOOGLE_DRIVE, "Google Drive")
+    print(f"\n[OK] Archivo guardado: {output_path}")
+
+    # Copias de seguridad en la nube (solo si no es la misma ruta)
+    if not CARPETA_ONEDRIVE.samefile(output_path.parent) if output_path.parent.exists() and CARPETA_ONEDRIVE.exists() else True:
+         CARPETA_ONEDRIVE.mkdir(parents=True, exist_ok=True)
+         copiar_archivo(output_path, CARPETA_ONEDRIVE, "OneDrive")
+
+    if not CARPETA_GOOGLE_DRIVE.samefile(output_path.parent) if output_path.parent.exists() and CARPETA_GOOGLE_DRIVE.exists() else True:
+        CARPETA_GOOGLE_DRIVE.mkdir(parents=True, exist_ok=True)
+        copiar_archivo(output_path, CARPETA_GOOGLE_DRIVE, "Google Drive")
 
     print("\n[INFO] Exportacion completada.")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"[ERROR FATAL] {e}")
+        sys.exit(1)

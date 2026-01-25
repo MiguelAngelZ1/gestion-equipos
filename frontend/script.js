@@ -1073,6 +1073,37 @@ function exportarPDF() {
   }, 1000);
 }
 
+async function exportarExcel() {
+  try {
+    showFormStatus("Generando Excel y sincronizando con la nube...", "info", true);
+    
+    // El endpoint devuelve un archivo para descargar
+    window.location.href = "/api/exportar-excel";
+    
+    // Esperar un poco para mostrar la notificación de éxito
+    setTimeout(() => {
+      showNotification(
+        "Excel Generado",
+        "El archivo se ha descargado y se sincronizó con OneDrive y Google Drive.",
+        "success"
+      );
+      hideFormStatus();
+      
+      // Ofrecer enviar WhatsApp
+      if (confirm("¿Deseas enviar una notificación de la exportación por WhatsApp?")) {
+        const numero = "5491134569648";
+        const mensaje = encodeURIComponent("✅ Hola! He realizado una exportación del Sistema de Gestión de Equipos a Excel. Los archivos ya se encuentran actualizados en OneDrive y Google Drive.");
+        window.open(`https://wa.me/${numero}?text=${mensaje}`, "_blank");
+      }
+    }, 2000);
+
+  } catch (error) {
+    console.error("Error exportando a Excel:", error);
+    showNotification("Error", "No se pudo realizar la exportación a Excel", "error");
+    hideFormStatus();
+  }
+}
+
 // ===== INICIALIZACIÓN (MODIFICADA) =====
 document.addEventListener("DOMContentLoaded", () => {
   if (form) form.addEventListener("submit", handleGuardarEquipo);
@@ -1092,6 +1123,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const exportPdfBtn = document.getElementById("exportPdfBtn");
   if (exportPdfBtn) {
     exportPdfBtn.addEventListener("click", exportarPDF);
+  }
+
+  const exportExcelBtn = document.getElementById("exportExcelBtn");
+  if (exportExcelBtn) {
+    exportExcelBtn.addEventListener("click", exportarExcel);
   }
 
   // Event listeners para detección de conexión
