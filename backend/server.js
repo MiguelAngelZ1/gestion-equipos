@@ -35,53 +35,64 @@ app.use(express.static(path.join(__dirname, "../frontend")));
 
 // Endpoint para exportar a Excel
 app.get("/api/exportar-excel", async (req, res) => {
+  let tempExcelPath = "";
+  let tempDataPath = "";
+  
   try {
     console.log("📊 [Server] Iniciando exportación a Excel...");
     const timestamp = Date.now();
-    const tempFilePath = path.join(__dirname, `../temp_export_${timestamp}.xlsx`);
+    tempExcelPath = path.join(__dirname, `../temp_export_${timestamp}.xlsx`);
+    tempDataPath = path.join(__dirname, `../temp_data_${timestamp}.json`);
     
-    // Probar primero con python3 (estándar en Linux/Railway) y luego con python
+    // 1. Obtener todos los equipos desde la base de datos (Postgres o SQLite)
+    const isPG = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
+    const deletedFilter = isPG 
+      ? "(is_deleted IS NULL OR is_deleted = false)"
+      : "(is_deleted IS NULL OR is_deleted = 0)";
+    
+    const equiposRaw = await db.all(`SELECT * FROM equipos WHERE ${deletedFilter} ORDER BY ine`);
+    const equiposFull = [];
+    
+    for (const eq of equiposRaw) {
+      const specs = await db.all("SELECT clave, valor FROM especificaciones WHERE equipo_id = ?", [eq.id]);
+      equiposFull.push({ ...eq, especificaciones: specs || [] });
+    }
+
+    // 2. Guardar datos en JSON temporal para que Python los lea
+    fs.writeFileSync(tempDataPath, JSON.stringify(equiposFull));
+    
+    // 3. Helper para ejecutar Python
     const tryPython = (cmd, args, callback) => {
-      const fullCmd = `${cmd} ${args}`;
-      exec(fullCmd, (error, stdout, stderr) => {
-        if (error && cmd === 'python3') {
-          console.log("⚠️ [Server] python3 no disponible, probando con 'python'...");
-          return tryPython('python', args, callback);
-        }
+      exec(`${cmd} ${args}`, (error, stdout, stderr) => {
+        if (error && cmd === 'python3') return tryPython('python', args, callback);
         callback(error, stdout, stderr);
       });
     };
 
     const scriptPath = path.join(__dirname, "../exportar_a_excel.py");
-    const args = `"${scriptPath}" "${tempFilePath}"`;
+    const pythonArgs = `"${scriptPath}" "${tempExcelPath}" "${tempDataPath}"`;
     
-    tryPython('python3', args, (error, stdout, stderr) => {
+    tryPython('python3', pythonArgs, (error, stdout, stderr) => {
       if (error) {
-        console.error(`❌ [Server] Error ejecutando script Python: ${error.message}`);
-        return res.status(500).json({ 
-          error: "No se pudo generar el archivo Excel. Verifique que Python y openpyxl estén instalados en el servidor.",
-          details: error.message 
-        });
+        console.error(`❌ [Server] Error Python: ${error.message}`);
+        // Limpieza inmediata si falla
+        if (fs.existsSync(tempDataPath)) fs.unlinkSync(tempDataPath);
+        return res.status(500).json({ error: "Error generando Excel", details: error.message });
       }
       
-      console.log(`✅ [Server] Script Python completado: ${stdout}`);
-      
-      if (fs.existsSync(tempFilePath)) {
-        res.download(tempFilePath, `Equipos_${new Date().toISOString().split('T')[0]}.xlsx`, (err) => {
-          if (err) {
-            console.error("❌ [Server] Error enviando el archivo:", err);
-          }
-          // Borrar archivo temporal después de enviar
-          fs.unlink(tempFilePath, (unlinkErr) => {
-            if (unlinkErr) console.error("⚠️ [Server] Error borrando temporal:", unlinkErr);
+      if (fs.existsSync(tempExcelPath)) {
+        res.download(tempExcelPath, `Equipos_${new Date().toISOString().split('T')[0]}.xlsx`, (err) => {
+          // Limpiar archivos temporales después de enviar o error
+          [tempExcelPath, tempDataPath].forEach(f => {
+            if (fs.existsSync(f)) fs.unlink(f, () => {});
           });
         });
       } else {
-        res.status(500).json({ error: "El archivo Excel no fue generado por el script." });
+        res.status(500).json({ error: "Archivo Excel no generado." });
       }
     });
   } catch (err) {
-    console.error("❌ [Server] Error en /api/exportar-excel:", err);
+    console.error("❌ [Server] Error crítico:", err);
     res.status(500).json({ error: err.message });
   }
 });
