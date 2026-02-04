@@ -171,13 +171,26 @@ app.get("/api/equipos", async (req, res) => {
 
     const equipos = await db.all(equiposQuery, params);
 
-    // Obtener especificaciones para cada equipo
+    // Obtener especificaciones para cada equipo y deduplicar
     for (const equipo of equipos) {
       const especificaciones = await db.all(
         "SELECT clave, valor FROM especificaciones WHERE equipo_id = ?",
         [equipo.id]
       );
-      equipo.especificaciones = especificaciones || [];
+      
+      // Deduplicar en memoria por si acaso la DB tiene basura
+      const uniqueSpecs = [];
+      const seen = new Set();
+      if (especificaciones) {
+          for (const s of especificaciones) {
+              const hash = `${(s.clave || "").trim().toLowerCase()}|${(s.valor || "").trim().toLowerCase()}`;
+              if (!seen.has(hash)) {
+                  seen.add(hash);
+                  uniqueSpecs.push(s);
+              }
+          }
+      }
+      equipo.especificaciones = uniqueSpecs;
     }
 
     res.json(equipos);
@@ -202,7 +215,20 @@ app.get("/api/equipos/:id", async (req, res) => {
       [id]
     );
 
-    res.json({ ...equipo, especificaciones });
+    // Deduplicar antes de enviar
+    const uniqueSpecs = [];
+    const seen = new Set();
+    if (especificaciones) {
+        for (const s of especificaciones) {
+            const hash = `${(s.clave || "").trim().toLowerCase()}|${(s.valor || "").trim().toLowerCase()}`;
+            if (!seen.has(hash)) {
+                seen.add(hash);
+                uniqueSpecs.push(s);
+            }
+        }
+    }
+
+    res.json({ ...equipo, especificaciones: uniqueSpecs });
   } catch (err) {
     console.error("Error en /api/equipos/:id:", err);
     res.status(500).json({ error: err.message });

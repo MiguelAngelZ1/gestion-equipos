@@ -830,6 +830,18 @@ function verDetallesEquipo(eq) {
     Array.isArray(eq.especificaciones) &&
     eq.especificaciones.length > 0
   ) {
+    // Deduplicar en el frontend para seguridad total
+    const uniqueSpecs = [];
+    const seen = new Set();
+    
+    eq.especificaciones.forEach(spec => {
+        const hash = `${(spec.clave || "").trim().toLowerCase()}|${(spec.valor || "").trim().toLowerCase()}`;
+        if (!seen.has(hash)) {
+            seen.add(hash);
+            uniqueSpecs.push(spec);
+        }
+    });
+
     html += `
             <div class="especificaciones-section">
                 <h3 class="section-title">
@@ -838,7 +850,7 @@ function verDetallesEquipo(eq) {
                 <div class="especificaciones-grid">
         `;
 
-    eq.especificaciones.forEach((spec) => {
+    uniqueSpecs.forEach((spec) => {
       html += `
                 <div class="especificacion-card">
                     <div class="espec-label">${spec.clave || "N/A"}</div>
