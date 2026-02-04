@@ -16,7 +16,9 @@ let isSyncing = false;
 // Función para disparar sincronización automática
 function triggerAutoSync() {
   const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
-  if (dbUrl && !isSyncing) {
+  const isLocal = os.platform() === 'win32';
+
+  if (dbUrl && !isSyncing && isLocal) {
     isSyncing = true;
     try {
       console.log("🔄 [Server] Cambios detectados. Sincronizando con la nube...");
@@ -432,9 +434,9 @@ const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
     await db.connect();
     
     // Iniciar sincronización inmediata al arrancar el servidor
-    // Solo si hay DATABASE_URL configurada
-    if (dbUrl) {
-      console.log("🔄 [Server] Iniciando sincronización de arranque...");
+    // Solo si hay DATABASE_URL configurada Y estamos en entorno local (Windows)
+    if (dbUrl && os.platform() === 'win32') {
+      console.log("🔄 [Server] Iniciando sincronización de arranque (Entorno Local)...");
       const sync = require('./db/sync');
       sync().catch(err => console.error("⚠️ [Server] Error en sincronización inicial:", err.message));
     }
