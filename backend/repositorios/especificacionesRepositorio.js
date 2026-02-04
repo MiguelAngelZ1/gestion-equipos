@@ -65,8 +65,22 @@ async function insertarEspecificaciones(db, esPostgres, equipoId, especificacion
 
   if (especificacionesValidas.length === 0) return;
 
+  // Eliminar duplicados de la lista antes de insertar
+  const uniqueSpecs = [];
+  const seen = new Set();
+  
+  for (const esp of especificacionesValidas) {
+    const key = `${esp.clave.toLowerCase()}|${esp.valor.toLowerCase()}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueSpecs.push(esp);
+    }
+  }
+
+  if (uniqueSpecs.length === 0) return;
+
   if (esPostgres) {
-    for (const esp of especificacionesValidas) {
+    for (const esp of uniqueSpecs) {
       await db.query(
         `INSERT INTO especificaciones (equipo_id, clave, valor)
          VALUES ($1, $2, $3)`,
@@ -76,7 +90,7 @@ async function insertarEspecificaciones(db, esPostgres, equipoId, especificacion
     return;
   }
 
-  for (const esp of especificacionesValidas) {
+  for (const esp of uniqueSpecs) {
     await new Promise((resolve, reject) => {
       db.run(
         `INSERT INTO especificaciones (equipo_id, clave, valor)

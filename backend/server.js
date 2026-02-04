@@ -12,21 +12,33 @@ const PORT = process.env.PORT || 3000;
 // La sincronización automática se maneja directamente importando el script de sync
 const syncScript = require("./db/sync");
 
+let isSyncing = false;
 // Función para disparar sincronización automática
 function triggerAutoSync() {
   const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
-  if (dbUrl) {
+  if (dbUrl && !isSyncing) {
+    isSyncing = true;
     try {
       console.log("🔄 [Server] Cambios detectados. Sincronizando con la nube...");
-      syncScript().catch((error) => {
-        console.error("❌ [Server] Error en sincronización de fondo:", error.message);
-      });
+      syncScript()
+        .then(() => {
+           console.log("✅ [Server] Sincronización automática finalizada");
+        })
+        .catch((error) => {
+          console.error("❌ [Server] Error en sincronización de fondo:", error.message);
+        })
+        .finally(() => {
+          isSyncing = false;
+        });
     } catch (error) {
       console.error(
         "❌ [Server] Error disparando sincronización:",
         error.message
       );
+      isSyncing = false;
     }
+  } else if (isSyncing) {
+    console.log("⏳ [Server] Sincronización ya en curso, saltando...");
   }
 }
 
@@ -259,6 +271,23 @@ app.post("/api/equipos", async (req, res) => {
     }
 
     const equipoId = id || `eq_${Date.now()}`;
+    
+    // Deduplicar especificaciones antes de guardar
+    const uniqueSpecs = [];
+    const seenSpecs = new Set();
+    
+    for (const spec of especificaciones) {
+        if (spec.clave && spec.valor) {
+            const claveStr = spec.clave.trim();
+            const valorStr = spec.valor.trim();
+            const hash = `${claveStr.toLowerCase()}|${valorStr.toLowerCase()}`;
+            
+            if (!seenSpecs.has(hash)) {
+                seenSpecs.add(hash);
+                uniqueSpecs.push({ clave: claveStr, valor: valorStr });
+            }
+        }
+    }
 
     if (id) {
       console.log("🔄 Actualizando equipo existente:", id);
@@ -299,15 +328,13 @@ app.post("/api/equipos", async (req, res) => {
       console.log("✅ Equipo insertado, cambios:", result.changes);
     }
 
-    if (especificaciones.length > 0) {
-      console.log("📋 Insertando especificaciones:", especificaciones.length);
-      for (const spec of especificaciones) {
-        if (spec.clave && spec.valor) {
+    if (uniqueSpecs.length > 0) {
+      console.log("📋 Insertando especificaciones únicas:", uniqueSpecs.length);
+      for (const spec of uniqueSpecs) {
           await db.run(
             "INSERT INTO especificaciones (equipo_id, clave, valor) VALUES (?, ?, ?)",
-            [equipoId, spec.clave.trim(), spec.valor.trim()]
+            [equipoId, spec.clave, spec.valor]
           );
-        }
       }
       console.log("✅ Especificaciones insertadas");
     }
